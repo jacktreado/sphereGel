@@ -1,0 +1,17 @@
+*.mat
+*.o
+*.slurm
+*.bin
+*.mp4
+*.xyz
+local/
+bash/*/slurm
+bash/*/bin
+bash/*/tasks
+*.exe
+*.dat
+*.pos
+*.energy
+*.stats
+*.cm
+.DS_Store
