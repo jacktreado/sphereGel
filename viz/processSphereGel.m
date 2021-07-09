@@ -9,7 +9,7 @@ g = 1.0/NGPERRADIUS;
 if ~exist(fstr,'file')
     error('processSphereGel:inputFileDoesNotExist','Input file %s does not exist, ending here.\n',fstr);
 else
-    fprintf('String %s exists, processing...\n',fstr);
+    fprintf('Input File %s exists, processing...\n',fstr);
 end
 
 % file info
@@ -25,16 +25,6 @@ else
     fprintf('File %s is %0.4g MB, processing...\n',fname,fsize/1e6);
 end
 
-
-% extract parameters from file name
-paramidx    = strfind(fname,'dlz');
-paramstr    = fname(paramidx:end);
-params      = sscanf(paramstr,'dlz%f_l2%f_seed%f.xyz');
-dlz         = params(1);
-l2          = params(2);
-seed        = params(3);
-
-
 % access pos data 
 posdata     = readSGelXYZ(fstr);
 N           = posdata.N;
@@ -42,19 +32,26 @@ NFRAMES     = posdata.NFRAMES;
 radii       = posdata.radii;
 L           = posdata.L;
 
-% get packing fraction over time
-pvols       = (4.0/3.0)*pi*radii.^3;
-boxvols     = L(:,1).*L(:,2).*L(:,3);
-pvsum       = sum(pvols,2);
-phi         = pvsum./boxvols;
-
 % load contact data
 cmfstr      = [floc '/' fname(1:end-4) '.cm'];
-fid         = fopen(cmfstr);
+% check contact file exists
+if ~exist(cmfstr,'file')
+    error('processSphereGel:contactFileDoesNotExist','Contact file %s does not exist, ending here.\n',cmfstr);
+else
+    fprintf('\t\t CM File %s exists, processing...\n',cmfstr);
+    cmfinfo     = dir(cmfstr);
+    cmfsize     = cmfinfo.bytes;
+    cmfname     = cmfinfo.name;
+    if fsize == 0
+        error('processSphereGel:contactFileEmpty','CM file %s empty, ending here.\n',cmfname);
+    else
+        fprintf('\t\t CM File %s is %0.4g MB, processing...\n',cmfname,cmfsize/1e6);
+    end
+end
 
 % contact matrix
 fprintf('\t** Reading in contact matrix...');
-
+fid         = fopen(cmfstr);
 NPAIRS      = 0.5*N*(N-1);
 frmt        = repmat('%f ',1,NPAIRS);
 data        = textscan(fid,frmt,NFRAMES);
@@ -71,6 +68,21 @@ z           = 2.0*Nc./N;
 % save last index before loosing rigidity
 lastRigidZInd = find(z(1:end-1) > 6 & z(2:end) < 6);
 lastRigidZInd = lastRigidZInd(1);
+
+
+% extract parameters from file name
+paramidx    = strfind(fname,'dlz');
+paramstr    = fname(paramidx:end);
+params      = sscanf(paramstr,'dlz%f_l2%f_seed%f.xyz');
+dlz         = params(1);
+l2          = params(2);
+seed        = params(3);
+
+% get packing fraction over time
+pvols       = (4.0/3.0)*pi*radii.^3;
+boxvols     = L(:,1).*L(:,2).*L(:,3);
+pvsum       = sum(pvols,2);
+phi         = pvsum./boxvols;
 
 
 %% Construct sphere image, get structural features
