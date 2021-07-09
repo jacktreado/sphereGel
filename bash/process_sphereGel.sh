@@ -67,7 +67,7 @@ for f in $flist; do
         echo - - FILE $file before seed search, skipping...
         continue
     else
-        echo - - Processing sphereGel sim. with filename: "$file"
+        echo - - Processing sphereGel sim. with seed = $seed, filename: "$file"
         let fcount=$fcount+1
     fi
 
