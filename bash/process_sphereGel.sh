@@ -69,7 +69,7 @@ for f in $flist; do
     else
         echo - - Processing sphereGel sim. with filename: "$file"
         let fcount=$fcount+1
-    done
+    fi
 
     # get mafile string
     savestr="$savedir"/"$baseid".mat
