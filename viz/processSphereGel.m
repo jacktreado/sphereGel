@@ -8,6 +8,8 @@ g = 1.0/NGPERRADIUS;
 % check input exists
 if ~exist(fstr,'file')
     error('processSphereGel:inputFileDoesNotExist','Input file %s does not exist, ending here.\n',fstr);
+else
+    fprintf('String %s exists, processing...\n',fstr);
 end
 
 % file info
@@ -19,6 +21,8 @@ floc        = finfo.folder;
 % check input is not empty
 if fsize == 0
     error('processSphereGel:inputFileEmpty','Input file %s empty, ending here.\n',fname);
+else
+    fprintf('File %s is %0.4g MB, processing...\n',fname,fsize/1e6);
 end
 
 
