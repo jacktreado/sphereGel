@@ -23,10 +23,10 @@ mkdir -p out
 
 # inputs
 N=$1
-dlz=$4
-l2=$5
-partition=$6
-time=$7
+dlz=$2
+l2=$3
+partition=$4
+time=$5
 
 # fixed variables
 dr=0.15
@@ -80,12 +80,10 @@ echo sbatch -t $time $slurmf
 #       INPUTS
 # ====================
 # 1. N
-# 2. dr
-# 3. dphi
-# 4. dlz
-# 5. l2
-# 6. partition
-# 7. time
+# 2. dlz
+# 3. l2
+# 4. partition
+# 5. time
 
 
 
