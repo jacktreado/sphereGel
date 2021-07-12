@@ -23,12 +23,14 @@ mkdir -p out
 
 # inputs
 N=$1
-dr=$2
-dphi=$3
 dlz=$4
 l2=$5
 partition=$6
 time=$7
+
+# fixed variables
+dr=0.15
+dphi=0.0005
 
 # name strings
 basestr=sgel_N"$N"_dr"$dr"_dphi"$dphi"_dlz"$dlz"_l2"$l2"
