@@ -34,7 +34,7 @@ dphi=0.0005
 
 # name strings
 basestr=sgel_N"$N"_dr"$dr"_dphi"$dphi"_dlz"$dlz"_l2"$l2"
-runstr=_PROCESS
+runstr="$basestr"_PROCESS
 searchstr="$basestr"_seed
 
 # access directory specific for this simulation
@@ -49,7 +49,7 @@ fi
 savestr="$savedir"/"$basestr".mat
 
 # create matlab command
-MCODE="addpath ~/sphereGel/viz/; processSphereGel('$simdatadir',$searchstr','$savestr'); quit"
+MCODE="addpath ~/sphereGel/viz/; processSphereGel('$simdatadir','$searchstr','$savestr'); quit"
 
 # setup slurm files
 slurmf=slurm/"$runstr".slurm
