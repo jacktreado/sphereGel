@@ -125,8 +125,16 @@ for ss = 1:NS
 
     % save last index before loosing rigidity (add 1, missing frame in cm
     % list)
-    lastRigidZInd   = find(z(1:end-1) > 6 & z(2:end) < 6);
-    NRIGID          = lastRigidZInd(1)+1;
+    lastRigidZInd = find(z(1:end-1) > 6 & z(2:end) < 6);
+    if isempty(lastRigidZInd)
+        fprintf('Could not find lastRigidZInd, skipping.\n');
+        fskip(ss) = true;
+        continue;
+    else
+        NRIGID = lastRigidZInd(1)+1;
+        fprintf('Found %s rigid frames (including start), processing...\n',NRIGID);
+    end
+    
     
     % save number of particles and frames
     N_LIST(ss) = N;
