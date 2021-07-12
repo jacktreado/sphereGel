@@ -270,6 +270,25 @@ for ss = 1:NS
     evList{ss} = eV;
 end
 
+% remove extra files
+fnameList(fskip)    = [];
+paramList(fskip,:)  = [];
+NFRAME_LIST(fskip)  = [];
+NRIGID_LIST(fskip)  = [];
+N_LIST(fskip)       = [];
+phiList(fskip,:)    = [];
+LList(fskip)        = [];
+radiiList(fskip)    = [];
+xposList(fskip)     = [];
+yposList(fskip)     = [];
+zposList(fskip)     = [];
+cmList(fskip)       = [];
+zList(fskip)        = [];
+skList(fskip)       = [];
+corr2DList(fskip)   = [];
+lambdaList(fskip)   = [];
+evList(fskip)       = [];
+
 
 %% Save data, end function
 
