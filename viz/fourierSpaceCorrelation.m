@@ -1,4 +1,4 @@
-function [kbins, sk, Sxy, Sxz, Syz, lambdaInfo] = fourierSpaceCorrelation(binaryLattice,L)
+function [kbins, sk, Sxy, Sxz, Syz, lambda, V] = fourierSpaceCorrelation(binaryLattice,L)
 %% FUNCTION to compute fourier space correlations based on binary lattice
 
 % lattice size (NOTE: rows = y, cols = x for images)
@@ -121,15 +121,7 @@ fprintf('\t\t -- Getting eigenvalues of G...\n');
 
 % get principal axes from gyration tensor
 [V,D] = eig(G);
-lambda = diag(D);
-
-% get effective directionss
-[~, l1_ind] = max(abs(V(:,1)));
-[~, l2_ind] = max(abs(V(:,2)));
-[~, l3_ind] = max(abs(V(:,3)));
-
-% package for output
-lambdaInfo = [lambda(1) lambda(2) lambda(3) l1_ind l2_ind l3_ind];
+lambda = diag(D)';
 
 % get 2D correlators
 fprintf('\t\t -- Smoothing S, getting 2D correlators...\n');

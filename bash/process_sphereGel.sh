@@ -29,12 +29,11 @@ dlz=$4
 l2=$5
 partition=$6
 time=$7
-startSeed="${8}"
-endSeed="${9}"
 
 # name strings
 basestr=sgel_N"$N"_dr"$dr"_dphi"$dphi"_dlz"$dlz"_l2"$l2"
-runstr="$basestr"_startseed"$startSeed"_endseed"$endSeed"_PROCESS
+runstr=_PROCESS
+searchstr="$basestr"_seed
 
 # access directory specific for this simulation
 simdatadir=$simtypedir/$basestr
@@ -44,61 +43,16 @@ then
     exit 1
 fi
 
-# create task file
-taskf=tasks/"$runstr".task
-rm -f $taskf
+# get mafile string to save data
+savestr="$savedir"/"$basestr".mat
 
-# loop over files
-flist="$simdatadir"/*.xyz
-let fcount=0
-
-# LOOP OVER FILES
-for f in $flist; do
-    # parse file name
-    file=${f##*/}
-    baseid=${file%%.xyz}
-    seed=${baseid#*seed*}
-
-    # check seeds
-    if [[ $seed -gt $endSeed ]]; then
-        echo - - FILE $file past seed search, skipping...
-        continue
-    elif [[ $seed -lt $startSeed ]]; then
-        echo - - FILE $file before seed search, skipping...
-        continue
-    else
-        echo - - Processing sphereGel sim. with seed = $seed, filename: "$file"
-        let fcount=$fcount+1
-    fi
-
-    # get mafile string
-    savestr="$savedir"/"$baseid".mat
-
-    # create matlab command
-    MCODE="addpath ~/sphereGel/viz/; processSphereGel('$f','$savestr'); quit"
-
-    # append to runString
-    runString="matlab -nodisplay -r \""$MCODE"\" "
-
-    # echo to task file
-    echo "$runString" >> $taskf
-done
-
-# test if task file was created
-if [[ ! -f "$taskf" ]]
-then
-    echo task file not created, ending before job submission
-    exit 1
-fi
-
-# get number of jobs to submit to each array
-let arraynum=$fcount
-echo -- total number of array runs = $arraynum
+# create matlab command
+MCODE="addpath ~/sphereGel/viz/; processSphereGel('$simdatadir',$searchstr','$savestr'); quit"
 
 # setup slurm files
 slurmf=slurm/"$runstr".slurm
 job_name="$runstr"
-runout=out/"$runstr"-%a.out
+runout=out/"$runstr".out
 rm -f $slurmf
 
 # echo about time
@@ -107,13 +61,12 @@ echo -- running time = $time for $partition
 echo -- PRINTING SLURM FILE...
 echo \#\!/bin/bash >> $slurmf
 echo \#SBATCH --cpus-per-task=1 >> $slurmf
-echo \#SBATCH --array=1-$arraynum >> $slurmf
 echo \#SBATCH -n 1 >> $slurmf
 echo \#SBATCH -p $partition >> $slurmf
 echo \#SBATCH -J $job_name >> $slurmf
 echo \#SBATCH -o $runout >> $slurmf
 echo module load MATLAB >> $slurmf
-echo sed -n \"\$\{SLURM_ARRAY_TASK_ID\}p\" "$taskf" \| /bin/bash >> $slurmf
+echo matlab -nodisplay -r \""$MCODE"\" >> $slurmf
 cat $slurmf
 
 # run sbatch file
@@ -131,8 +84,6 @@ sbatch -t $time $slurmf
 # 5. l2
 # 6. partition
 # 7. time
-# 8. startSeed
-# 9. endSeed
 
 
 
