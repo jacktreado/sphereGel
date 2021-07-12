@@ -289,6 +289,8 @@ corr2DList(fskip)   = [];
 lambdaList(fskip)   = [];
 evList(fskip)       = [];
 
+NS = sum(~fskip);
+
 
 %% Save data, end function
 
