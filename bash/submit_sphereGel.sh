@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # directories with code
-maindir=~/flowers/phasesep
+maindir=~/sphereGel
 
 # directory for all output for cell simulations
 outputdir=/gpfs/project/fas/ohern/jdt45/flowers
