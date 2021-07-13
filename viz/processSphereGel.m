@@ -32,7 +32,6 @@ radiiList = cell(NS,1);
 xposList = cell(NS,1);
 yposList = cell(NS,1);
 zposList = cell(NS,1);
-cmList = cell(NS,1);
 zList = cell(NS,1);
 
 skList = cell(NS,1);
@@ -143,7 +142,6 @@ for ss = 1:NS
     
     % save rigid part of contact matrix (get 2 - NRIGID, first frame is
     % random init condition)
-    cmList{ss} = cm(1:(NRIGID-1),:);
     zList{ss} = z;
     
     % save positions in rigid network
@@ -290,7 +288,6 @@ radiiList(fskip)    = [];
 xposList(fskip)     = [];
 yposList(fskip)     = [];
 zposList(fskip)     = [];
-cmList(fskip)       = [];
 zList(fskip)        = [];
 skList(fskip)       = [];
 corr2DList(fskip)   = [];
