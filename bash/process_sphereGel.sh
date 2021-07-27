@@ -23,14 +23,12 @@ mkdir -p out
 
 # inputs
 N=$1
-dlz=$2
-l2=$3
-partition=$4
-time=$5
-
-# fixed variables
-dr=0.15
-dphi=0.0005
+dr=$2
+dphi=$3
+dlz=$4
+l2=$5
+partition=$6
+time=$7
 
 # name strings
 basestr=sgel_N"$N"_dr"$dr"_dphi"$dphi"_dlz"$dlz"_l2"$l2"
@@ -80,10 +78,12 @@ sbatch -t $time $slurmf
 #       INPUTS
 # ====================
 # 1. N
-# 2. dlz
-# 3. l2
-# 4. partition
-# 5. time
+# 2. dr
+# 3. dphi
+# 4. dlz
+# 5. l2
+# 6. partition
+# 7. time
 
 
 
