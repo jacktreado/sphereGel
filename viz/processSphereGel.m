@@ -121,6 +121,9 @@ for ss = 1:NS
     % get mean contact number z
     Nc          = sum(cm,2);
     z           = 2.0*Nc./N;
+    
+    % clear memory by removing cm
+    clear('cm');
 
     % save last index before loosing rigidity (add 1, missing frame in cm
     % list)

@@ -68,6 +68,11 @@ kzpage                      = reshape(kz,1,1,nz);
 knormsq                     = kyx + kzpage.^2;
 knorm                       = sqrt(knormsq);
 
+% clear extra memory
+clear('kyz');
+clear('kzpage');
+clear('knormsq');
+
 % loop over bins
 fprintf('\t\t -- Looping over bins and calculating S(k)...\n');
 for bb = 1:nkbins
