@@ -10,7 +10,7 @@ outputdir=/gpfs/project/fas/ohern/jdt45/flowers
 simtypedir=$outputdir/sphereGel
 
 # directory to save matfiles
-savedir=$simtypedir/matfiles
+savedir=/gpfs/scratch60/ohern/jdt45/sphereGel/matfiles
 
 # make directories, unless they already exist
 mkdir -p $outputdir
