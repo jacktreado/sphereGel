@@ -20,8 +20,8 @@ mkdir -p out
 # inputs
 N=$1
 dr=$2
-dphi=$3
-dlz=$4
+dg=$3
+del=$4
 l2=$5
 partition=$6
 time=$7
@@ -30,13 +30,14 @@ numRuns=$9
 startSeed="${10}"
 
 # other parameters
-Ftol=1e-12
+dphi=1e-4
+Ftol=1e-8
 
 let numSeeds=$numSeedsPerRun*$numRuns
 let endSeed=$startSeed+$numSeeds-1
 
 # name strings
-basestr=sgel_N"$N"_dr"$dr"_dphi"$dphi"_dlz"$dlz"_l2"$l2"
+basestr=sgel_N"$N"_dr"$dr"_dg"$dg"_del"$del"_l2"$l2"
 runstr="$basestr"_startseed"$startSeed"_endseed"$endSeed"
 
 # make directory specific for this simulation
@@ -92,7 +93,7 @@ for seed in `seq $startSeed $numSeedsPerRun $endSeed`; do
         cmf=$simdatadir/$filestr.cm
 
         # append to runString
-        runString="$runString ; ./$binf $N $dr $dphi $dlz $l2 $Ftol $runseed $xyzf $cmf"
+        runString="$runString ; ./$binf $N $dr $dphi $dg $del $l2 $Ftol $runseed $xyzf $cmf"
     done
 
     # finish off run string
@@ -143,8 +144,8 @@ sbatch -t $time $slurmf
 # ====================
 # 1. N
 # 2. dr
-# 3. dphi
-# 4. dlz
+# 3. dg
+# 4. del
 # 5. l2
 # 6. partition
 # 7. time

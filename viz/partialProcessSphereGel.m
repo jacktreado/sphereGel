@@ -9,10 +9,13 @@ g = 1.0/NGPERRADIUS;
 simlist = dir([floc '/' fpattern '*.xyz']);
 NS = length(simlist);
 if NS == 0
-    error('processSphereGel:noInputFilesFound','No input files found with string %s in loc %s, ending here.\n',fpattern,floc);
+    error('partialProcessSphereGel:noInputFilesFound','No input files found with string %s in loc %s, ending here.\n',fpattern,floc);
 else
     fprintf('NF = %d files found using pattern %s, processing...\n',NS,fpattern);
 end
+
+% number of snapshots
+NSNAPS = 4;
 
 %% Loop over files, extract structural features
 
@@ -38,9 +41,6 @@ skList = cell(NS,1);
 corr2DList = cell(NS,1);
 lambdaList = cell(NS,1);
 evList = cell(NS,1);
-
-% number of snapshots
-NSNAPS = 2;
 
 % loop over sim files
 for ss = 1:NS

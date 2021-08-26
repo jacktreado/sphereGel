@@ -6,9 +6,6 @@
 
 	Generate gel of spheres via athermal extension
 
-	compile: g++ -O3 src/sphereGel.cpp -o sgel.o
-	run: ./sgel.o 32 0.1 1e-4 1e-4 0 0.05 1e-8 1 test.xyz test.cm
-
 */
 
 // preprocessor directives
@@ -37,7 +34,6 @@ const int pnum 				= 14;
 
 const double phi0 			= 0.9;
 const double phimin 		= 0.1;
-const double Umin 			= 1e-16;
 const double timeStepMag 	= 0.01;
 
 const double alpha0      	= 0.2;
@@ -50,7 +46,7 @@ const int NSKIP 			= 1e3;
 const int NMIN        		= 100;
 const int NNEGMAX     		= 2000;
 const int NDELAY      		= 1000;
-const int itmax       		= 5e6;  
+const int itmax       		= 1e7;  
 
 
 // function prototypes
@@ -69,25 +65,23 @@ int main(int argc, char const *argv[])
 
 	// parameters to be read in 
 	int N, seed;
-	double l2, dr, dphi, dg, del, Ftol;
+	double l2, dr, dphi, dlz, Ftol;
 
 	// read in parameters from command line input
 	string N_str 		= argv[1];
 	string dr_str 		= argv[2];
 	string dphi_str 	= argv[3];
-	string dg_str 		= argv[4];
-	string del_str 		= argv[5];
-	string l2_str 		= argv[6];
-	string Ftol_str 	= argv[7];
-	string seed_str 	= argv[8];
-	string xyzFile 		= argv[9];
-	string cmFile 		= argv[10];
+	string dlz_str 		= argv[4];
+	string l2_str 		= argv[5];
+	string Ftol_str 	= argv[6];
+	string seed_str 	= argv[7];
+	string xyzFile 		= argv[8];
+	string cmFile 		= argv[9];
 
 	stringstream Nss(N_str);
 	stringstream drss(dr_str);
 	stringstream dphiss(dphi_str);
-	stringstream dgss(dg_str);
-	stringstream delss(del_str);
+	stringstream dlzss(dlz_str);
 	stringstream l2ss(l2_str);
 	stringstream Ftolss(Ftol_str);
 	stringstream seedss(seed_str);
@@ -95,8 +89,7 @@ int main(int argc, char const *argv[])
 	Nss >> N;
 	drss >> dr;
 	dphiss >> dphi;
-	dgss >> dg;
-	delss >> del;
+	dlzss >> dlz;
 	l2ss >> l2;
 	Ftolss >> Ftol;
 	seedss >> seed;
@@ -118,13 +111,6 @@ int main(int argc, char const *argv[])
 	}
 
 
-	// check del parameter
-	if (del < 0.0 || del > 1.0){
-		cout << "** ERROR: del = " << del << ", should be within 0 to 1. Ending here. " << endl;
-		return 1;
-	}
-
-
 	// output opening statement to console
 	cout << "=======================================================" << endl << endl;
 	cout << "		sphereGel.cpp 									" << endl;
@@ -133,8 +119,7 @@ int main(int argc, char const *argv[])
 	cout << "		N 			= " << N << "						" << endl;
 	cout << "		dr 			= " << dr << " 						" << endl;
 	cout << "		dphi 		= " << dphi << " 					" << endl;
-	cout << "		dg 			= " << dg << "						" << endl;
-	cout << "		del 		= " << del << "						" << endl;
+	cout << "		dlz 		= " << dlz << "						" << endl;
 	cout << "		l2 			= " << l2 << " 						" << endl;
 	cout << "		Ftol 		= " << Ftol << " 					" << endl;
 	cout << "		seed 		= " << seed << "					" << endl;
@@ -735,24 +720,20 @@ int main(int argc, char const *argv[])
 
 	// decompression iterator
 	int it = 0;
-	double rscale;
 
 	// attraction parameters
 	double p1, u1, u2, h, lij;
 
-	// strain parameters
-	double dgx, dgy, dgz;
-	dgx = 1.0 + dg*(1.0 - del);
-	dgy = 1.0 - (dg/(1.0 + dg))*(1 - del);
-	dgz = 1.0 + dg*del;
+	// determine change in Lz
+	int NSTEPS = round((phi - phimin)/dphi);
+	double lzscale, rscale;
 
 	// determine frames to skip between xyz output
-	int NSTEPS = round((phi - phimin)/dphi);
 	int NXYZSTEPS = round((phi - phimin)/phiskip);
 	int NPHISKIP = NSTEPS/NXYZSTEPS;
 
 	// loop until phimin found
-	while ((phi > phimin || abs(U) > Umin) && it < itmax){
+	while (phi > phimin && it < itmax){
 		// reset FIRE variables that make have changed
 		fireit 		= 0;
 		fcheck 		= 10*Ftol;
@@ -1210,61 +1191,51 @@ int main(int argc, char const *argv[])
 			fireit++;
 		}
 
-		// print + continue regardless of convergence
-		cout << endl << endl;
-		cout << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&" << endl;
-		cout << "===========================================" << endl;
-		cout << " 	F I R E 						" << endl;
-		cout << "		M I N I M I Z A T I O N 	" << endl;
-		cout << "	 C O N V E R G E D! 			" << endl;
-		cout << "===========================================" << endl;
-		cout << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&" << endl;
-		cout << endl;
-		cout << "	** fireit = " << fireit << endl;
-		cout << "	** it = " << it << endl;
-		cout << "	** fcheck = " << fcheck << endl;
-		cout << "	** vnorm = " << vnorm << endl;
-		cout << "	** dt = " << dt << endl;
-		cout << "	** P = " << P << endl;
-		cout << "	** Pdir = " << P/(fnorm*vnorm) << endl;
-		cout << "	** alpha = " << alpha << endl;
-		cout << "	** U = " << U << endl;
-		cout << "	** phi = " << phi << endl << endl;
+		// check if FIRE converged
+		if (fireit == itmax){
+			cout << "	** FIRE minimization did not converge, fireit = " << fireit << ", itmax = " << itmax << "; ending." << endl;
+			return 1;
+		}
+		else{
+			cout << endl << endl;
+			cout << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&" << endl;
+			cout << "===========================================" << endl;
+			cout << " 	F I R E 						" << endl;
+			cout << "		M I N I M I Z A T I O N 	" << endl;
+			cout << "	 C O N V E R G E D! 			" << endl;
+			cout << "===========================================" << endl;
+			cout << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&" << endl;
+			cout << endl;
+			cout << "	** fireit = " << fireit << endl;
+			cout << "	** it = " << it << endl;
+			cout << "	** fcheck = " << fcheck << endl;
+			cout << "	** vnorm = " << vnorm << endl;
+			cout << "	** dt = " << dt << endl;
+			cout << "	** P = " << P << endl;
+			cout << "	** Pdir = " << P/(fnorm*vnorm) << endl;
+			cout << "	** alpha = " << alpha << endl;
+			cout << "	** U = " << U << endl;
+			cout << "	** phi = " << phi << endl << endl;
 
-		// print positions to xyz file during initial minimization
-		if (it % NPHISKIP == 0){
-			printXYZ(xyzout,pos,radii,L,N);
-			printCM(cmout,cij,NPW);
+			// print positions to xyz file during initial minimization
+			if (it % NPHISKIP == 0){
+				printXYZ(xyzout,pos,radii,L,N);
+				printCM(cmout,cij,NPW);
+			}
 		}
 
 		// incremement iterator
 		it++;
 
-		// alternate volumetric strain and decompression
-		if (it % 2 == 0){
-			// even: deform boundary
-			L[0] *= dgx;
-			L[1] *= dgy;
-			L[2] *= dgz;
+		// scale particles and box lengths based on delta phi
+		lzscale = 1.0 + (dlz - 1.0)*(L0/L[2])/NSTEPS;
+		L[2] *= lzscale;
+		lc[2] *= lzscale;
 
-			// affine displacements
-			for (i=0; i<N; i++){
-				pos[i*NDIM] *= dgx;
-				pos[i*NDIM + 1] *= dgy;
-				pos[i*NDIM + 2] *= dgz;
-			}
-
-			// update linked list cell geometry
-			for (d=0; d<NDIM; d++)
-				lc[d] = L[d]/sc[d];
-		}
-		else{
-			// odd: shrink particles
-			rscale = pow((phi - dphi)/phi,1.0/NDIM);
-			for (i=0; i<N; i++){
-				mass[i] *= pow(rscale,NDIM);
-				radii[i] *= rscale;
-			}
+		rscale = pow(lzscale*(1.0 - (dphi/phi)),1.0/NDIM);
+		for (i=0; i<N; i++){
+			mass[i] *= pow(rscale,NDIM);
+			radii[i] *= rscale;
 		}
 
 		// recompute phi
@@ -1272,7 +1243,14 @@ int main(int argc, char const *argv[])
 		for (i=0; i<N; i++)
 			phi += mass[i];
 		phi /= L[0]*L[1]*L[2]; 
+
+
+		// apply affine strain
+		for (i=0; i<N; i++)
+			pos[i*NDIM + 2] *= lzscale;
 	}
+
+	
 
 
 	// close objects

@@ -9,7 +9,9 @@ ndata = textscan(fid,'%f',1);
 N = ndata{1};
 
 % print to console
-fprintf('reading in data from %s, N = %d\n',fstr,N);
+finfo = dir(fstr);
+fsize = finfo.bytes;
+fprintf('reading in data from %s, N = %d, size = %0.4g MB\n',fstr,N,fsize/1e6);
 
 % stuff to save
 MAXNFRAMES = 1e5;
