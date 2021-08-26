@@ -4,7 +4,7 @@
 maindir=~/sphereGel/src
 
 # directory for all output for cell simulations
-outputdir=/gpfs/project/fas/ohern/jdt45/flowers
+outputdir=/gpfs/loomis/project/ohern/"$USER"/flowers
 
 # directory for simulations specific to jamming
 simtypedir=$outputdir/sphereGel
