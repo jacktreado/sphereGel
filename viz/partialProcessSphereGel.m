@@ -15,7 +15,7 @@ else
 end
 
 % number of snapshots
-NSNAPS = 4;
+NSNAPS = 3;
 
 %% Loop over files, extract structural features
 
@@ -24,23 +24,25 @@ fskip = false(NS,1);
 
 % data to save
 fnameList = cell(NS,1);
-paramList = zeros(NS,3);   % dlz, l2, seed
-NFRAME_LIST = zeros(NS,1);
-NRIGID_LIST = zeros(NS,1);
+paramList = zeros(NS,4);   % dg, del, l2, seed
 N_LIST = zeros(NS,1);
 
-phiList = cell(NS,2);
-LList = cell(NS,1);
-radiiList = cell(NS,1);
-xposList = cell(NS,1);
-yposList = cell(NS,1);
-zposList = cell(NS,1);
-zList = cell(NS,1);
+% save things only at each snapshot
+SNAP_LIST = zeros(NS,NSNAPS);
+phiList = zeros(NS,NSNAPS);
+phiImgList = zeros(NS,NSNAPS);
+KgList = zeros(NS,NSNAPS);
+xiList = zeros(NS,NSNAPS);
+k2List = zeros(NS,NSNAPS);
 
-skList = cell(NS,1);
-corr2DList = cell(NS,1);
-lambdaList = cell(NS,1);
-evList = cell(NS,1);
+LList = cell(NS,NSNAPS);
+radiiList = cell(NS,NSNAPS);
+xposList = cell(NS,NSNAPS);
+yposList = cell(NS,NSNAPS);
+zposList = cell(NS,NSNAPS);
+zList = zeros(NS,NSNAPS);
+skList = cell(NS,NSNAPS);
+kbinList = cell(NS,NSNAPS);
 
 % loop over sim files
 for ss = 1:NS
@@ -65,13 +67,13 @@ for ss = 1:NS
     posdata     = readSGelXYZ([ffldr '/' fname]);
     N           = posdata.N;
     NFRAMES     = posdata.NFRAMES;
-    radii       = posdata.radii;
     L           = posdata.L;
     
-    % save positions
+    % save positions & radii
     xpos            = posdata.xpos;
     ypos            = posdata.ypos;
     zpos            = posdata.zpos;
+    radii           = posdata.radii;
     
     % load contact data
     cmfstr      = [ffldr '/' fname(1:end-4) '.cm'];
@@ -93,6 +95,12 @@ for ss = 1:NS
             fprintf('\t\t CM File %s is %0.4g MB, processing...\n',cmfname,cmfsize/1e6);
         end
     end
+    
+    % get apparent packing fraction over time
+    pvols       = (4.0/3.0)*pi*radii.^3;
+    boxvols     = L(:,1).*L(:,2).*L(:,3);
+    pvsum       = sum(pvols,2);
+    phi         = pvsum./boxvols;
     
     % contact matrix
     % NOTE: 1 less frame in CM than in xyz
@@ -126,63 +134,53 @@ for ss = 1:NS
         fprintf('Found %s rigid frames (including start), processing...\n',NRIGID);
     end
     
-    
     % save number of particles and frames
     N_LIST(ss) = N;
-    NFRAME_LIST(ss) = NFRAMES;
-    NRIGID_LIST(ss) = NRIGID;
     
-    % save rigid part of contact matrix (get 2 - NRIGID, first frame is
-    % random init condition)
-    zList{ss} = z;
+    % get frame ids of snapshots
+    snapids = round(linspace(2,NRIGID,NSNAPS));
+    SNAP_LIST(ss,:) = snapids';
     
-    % save positions in rigid network
-    xposList{ss} = xpos(2:NRIGID,:);
-    yposList{ss} = ypos(2:NRIGID,:);
-    zposList{ss} = zpos(2:NRIGID,:);
-    radiiList{ss} = radii(2:NRIGID,:);
-    LList{ss} = L(1:NRIGID,:);
+    % save into cells
+    for pp = 1:NSNAPS
+        % particle info
+        xposList{ss,pp} = xpos(snapids(pp),:);
+        yposList{ss,pp} = xpos(snapids(pp),:);
+        zposList{ss,pp} = xpos(snapids(pp),:);
+        radiiList{ss,pp} = radii(snapids(pp),:);
+        
+        % box info
+        LList{ss,pp} = L(snapids(pp),:);
+        
+        % contact info
+        zList(ss,pp) = z(snapids(pp),:);
+        
+        % packing fraction
+        phiList(ss,pp) = phi(snapids(pp));
+    end
     
     % extract parameters from file name
-    paramidx    = strfind(fname,'dlz');
+    paramidx    = strfind(fname,'dg');
     paramstr    = fname(paramidx:end);
-    params      = sscanf(paramstr,'dlz%f_l2%f_seed%f.xyz');
-    dlz         = params(1);
-    l2          = params(2);
-    seed        = params(3);
+    params      = sscanf(paramstr,'dg%f_del%f_l2%f_seed%f.xyz');
+    dg          = params(1);
+    del         = params(2);
+    l2          = params(3);
+    seed        = params(4);
     
     % save
-    paramList(ss,:) = [dlz, l2, seed];
-
-    % get apparent packing fraction over time
-    pvols       = (4.0/3.0)*pi*radii.^3;
-    boxvols     = L(:,1).*L(:,2).*L(:,3);
-    pvsum       = sum(pvols,2);
-    phi         = pvsum./boxvols;
-    
-    % save
-    phiList{ss,1} = phi;
+    paramList(ss,:) = [dg, del, l2, seed];
     
     
     % -- Construct sphere image, get structural features
 
     % populate lattice to turn into image
     fprintf('\t** Populating spheres onto lattice for image...\n');
-    
-    % snapshots of structure
-    snapshots = [round(0.5*(NRIGID-1)) NRIGID-1];
-    
-    % create tmp cells to store correlation/image info
-    phiImg          = zeros(NSNAPS,1);
-    sk              = cell(NSNAPS,2);
-    corr2D          = cell(NSNAPS,3);
-    lambda          = zeros(NSNAPS,3);
-    eV              = cell(NSNAPS,1);
 
     % loop over frames with z > 6
     for kk = 1:NSNAPS
         % ii is frame
-        ii = snapshots(kk);
+        ii = snapids(kk);
         
         % get positions in frame
         x = xpos(ii+1,:)';
@@ -232,40 +230,49 @@ for ss = 1:NS
             NSPHERINDS = sum(sphereInds);
             binaryLattice(sphereInds) = ones(NSPHERINDS,1);
         end
-        phiImg(kk) = mean(binaryLattice,'all');
+        phiImgList(ss,kk) = mean(binaryLattice,'all');
 
         % Use external function to plot correlation 
         fprintf('\t ** frame %d (note: skipping random frame 1), computing correlation functions...',ii + 1);
-        [sk{kk,1}, sk{kk,2}, corr2D{kk,1}, corr2D{kk,2}, corr2D{kk,3}, lambda(kk,:), eV{kk}] = fourierSpaceCorrelation(binaryLattice,L(ii+1,:));
+        [kbinList{ss,kk}, skList{ss,kk}, ~, ~, ~, lambda, ~] = fourierSpaceCorrelation(binaryLattice,L(ii+1,:));
         fprintf('\t done computing correlation functions.\n\n');
+        
+        % sort eigenvalues
+        lambda = sort(lambda);
+        
+        % first moment of s(k)
+        xiList(ss,kk) = sum(skList{ss,kk}.*kbinList{ss,kk})./sum(skList{ss,kk});
+        
+        % correlation anistropy
+        Kgtmp = sqrt(lambda(1) + lambda(2) + lambda(3));
+        btmp = lambda(3) - 0.5*(lambda(1) + lambda(2));
+        ctmp = lambda(2) - lambda(1);
+        k2tmp = (btmp^2 + 0.75*ctmp^2)/Kgtmp^4;
+        
+        % save info
+        KgList(ss,kk) = Kgtmp;
+        k2List(ss,kk) = k2tmp;
     end
     fprintf('\t ** ...done populating spheres onto lattice.\n\n');
-
-    % save 
-    phiList{ss,2} = phiImg;
-    skList{ss} = sk;
-    corr2DList{ss} = corr2D;
-    lambdaList{ss} = lambda;
-    evList{ss} = eV;
 end
 
 % remove extra files
 fnameList(fskip)    = [];
 paramList(fskip,:)  = [];
-NFRAME_LIST(fskip)  = [];
-NRIGID_LIST(fskip)  = [];
 N_LIST(fskip)       = [];
+SNAP_LIST(fskip,:)  = [];
 phiList(fskip,:)    = [];
-LList(fskip)        = [];
-radiiList(fskip)    = [];
-xposList(fskip)     = [];
-yposList(fskip)     = [];
-zposList(fskip)     = [];
-zList(fskip)        = [];
-skList(fskip)       = [];
-corr2DList(fskip)   = [];
-lambdaList(fskip)   = [];
-evList(fskip)       = [];
+LList(fskip,:)      = [];
+radiiList(fskip,:)  = [];
+xposList(fskip,:)   = [];
+yposList(fskip,:)   = [];
+zposList(fskip,:)   = [];
+zList(fskip,:)      = [];
+skList(fskip,:)     = [];
+kbinList(fskip,:)   = [];
+KgList(fskip,:)     = [];
+k2List(fskip,:)     = [];
+xiList(fskip,:)     = [];
 
 NS = sum(~fskip);
 
@@ -273,8 +280,8 @@ NS = sum(~fskip);
 %% Save data, end function
 
 fprintf('Saving data to savestr %s, ending.\n',savestr);
-save(savestr,'fnameList','paramList','N_LIST','NFRAME_LIST','NRIGID_LIST','phiList','LList','radiiList',...
-    'xposList','yposList','zposList','zList','skList','corr2DList','lambdaList','evList','g','floc','fpattern','savestr','NS');
+save(savestr,'fnameList','paramList','N_LIST','SNAP_LIST','kbinList','phiList','LList','radiiList',...
+    'xposList','yposList','zposList','zList','skList','KgList','k2List','xiList','g','floc','fpattern','savestr','NS','NSNAPS');
 
 
 end
