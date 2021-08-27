@@ -262,6 +262,7 @@ paramList(fskip,:)  = [];
 N_LIST(fskip)       = [];
 SNAP_LIST(fskip,:)  = [];
 phiList(fskip,:)    = [];
+phiImgList(fskip,:) = [];
 LList(fskip,:)      = [];
 radiiList(fskip,:)  = [];
 xposList(fskip,:)   = [];
@@ -280,7 +281,7 @@ NS = sum(~fskip);
 %% Save data, end function
 
 fprintf('Saving data to savestr %s, ending.\n',savestr);
-save(savestr,'fnameList','paramList','N_LIST','SNAP_LIST','kbinList','phiList','LList','radiiList',...
+save(savestr,'fnameList','paramList','N_LIST','SNAP_LIST','kbinList','phiList','LList','radiiList','phiImgList',...
     'xposList','yposList','zposList','zList','skList','KgList','k2List','xiList','g','floc','fpattern','savestr','NS','NSNAPS');
 
 
