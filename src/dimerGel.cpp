@@ -6,6 +6,9 @@
 
 	Generate gel of spheres via athermal extension
 
+	compile: g++ -O3 src/dimerGel.cpp -o dgel.o
+	./dgel.o 32 0.1 1e-4 1e-4 0 0.05 1e-8 1 test.xyz test.cm
+
 */
 
 // preprocessor directives
@@ -30,11 +33,15 @@ using namespace std;
 const double PI 			= 4*atan(1);
 const int w 				= 6;
 const int wnum 				= 25;
-const int pnum 				= 14;
+const int pnum 				= 12;
 
-const double phi0 			= 0.9;
-const double phimin 		= 0.1;
+const double phi0 			= 1.1;
+const double phimin 		= 0.3;
 const double timeStepMag 	= 0.01;
+const double dr 			= 0.01;
+const double Umin 			= 1e-16;
+const double l0min 			= 1e-4;
+const double kl 			= 1.0;
 
 const double alpha0      	= 0.2;
 const double finc        	= 1.1;
@@ -50,10 +57,10 @@ const int itmax       		= 1e7;
 
 
 // function prototypes
-void printXYZ(ofstream& xyzout, vector<double>& pos, vector<double>& radii, vector<double>& L, int N);
-void printCM(ofstream& cmout, vector<bool>& cij, int NPW);
+void printXYZ(ofstream &xyzout, vector<double> &pos, vector<double> &radii, vector<double> &L, vector<int> &z, int N);
+void printCM(ofstream &cmout, vector<bool> &cij, int NPW);
 int cmindex(int i, int j, int N);
-void addContacts(int i, int j, vector<bool>& cij, vector<int>& z, int N);
+void addContacts(int i, int j, vector<bool> &cij, vector<int> &z, int N);
 
 // MAIN
 int main(int argc, char const *argv[])
@@ -65,34 +72,40 @@ int main(int argc, char const *argv[])
 
 	// parameters to be read in 
 	int N, seed;
-	double l2, dr, dphi, dlz, Ftol;
+	double l2, dl0, dphi, dg, del, Ftol;
 
 	// read in parameters from command line input
 	string N_str 		= argv[1];
-	string dr_str 		= argv[2];
+	string dl0_str 		= argv[2];
 	string dphi_str 	= argv[3];
-	string dlz_str 		= argv[4];
-	string l2_str 		= argv[5];
-	string Ftol_str 	= argv[6];
-	string seed_str 	= argv[7];
-	string xyzFile 		= argv[8];
-	string cmFile 		= argv[9];
+	string dg_str 		= argv[4];
+	string del_str 		= argv[5];
+	string l2_str 		= argv[6];
+	string Ftol_str 	= argv[7];
+	string seed_str 	= argv[8];
+	string xyzFile 		= argv[9];
+	string cmFile 		= argv[10];
 
 	stringstream Nss(N_str);
-	stringstream drss(dr_str);
+	stringstream dl0ss(dl0_str);
 	stringstream dphiss(dphi_str);
-	stringstream dlzss(dlz_str);
+	stringstream dgss(dg_str);
+	stringstream delss(del_str);
 	stringstream l2ss(l2_str);
 	stringstream Ftolss(Ftol_str);
 	stringstream seedss(seed_str);
 
 	Nss >> N;
-	drss >> dr;
+	dl0ss >> dl0;
 	dphiss >> dphi;
-	dlzss >> dlz;
+	dgss >> dg;
+	delss >> del;
 	l2ss >> l2;
 	Ftolss >> Ftol;
 	seedss >> seed;
+
+	// number of monomers
+	int NMTOT = 2*N;
 
 	// open xyz file
 	ofstream xyzout;
@@ -111,6 +124,13 @@ int main(int argc, char const *argv[])
 	}
 
 
+	// check del parameter
+	if (del < 0.0 || del > 1.0){
+		cout << "** ERROR: del = " << del << ", should be within 0 to 1. Ending here. " << endl;
+		return 1;
+	}
+
+
 	// output opening statement to console
 	cout << "=======================================================" << endl << endl;
 	cout << "		sphereGel.cpp 									" << endl;
@@ -119,7 +139,8 @@ int main(int argc, char const *argv[])
 	cout << "		N 			= " << N << "						" << endl;
 	cout << "		dr 			= " << dr << " 						" << endl;
 	cout << "		dphi 		= " << dphi << " 					" << endl;
-	cout << "		dlz 		= " << dlz << "						" << endl;
+	cout << "		dg 			= " << dg << "						" << endl;
+	cout << "		del 		= " << del << "						" << endl;
 	cout << "		l2 			= " << l2 << " 						" << endl;
 	cout << "		Ftol 		= " << Ftol << " 					" << endl;
 	cout << "		seed 		= " << seed << "					" << endl;
@@ -142,12 +163,13 @@ int main(int argc, char const *argv[])
 	 * * * * * * * * * * * * * * * * * */
 
 	// initialization variables
-	double r1, r2, grv, rsum3, rmax, L0;
+	double r1, r2, g1, g2, rsum3, rmax, L0;
 
 	// particle radii and positions
-	vector<double> radii(N,0.0);
-	vector<double> mass(N,0.0);
-	vector<double> pos(NDIM*N,0.0);
+	vector<double> radii(NMTOT,0.0);
+	vector<double> l0(N,0.0);
+	vector<double> mass(NMTOT,0.0);
+	vector<double> pos(NDIM*NMTOT,0.0);
 
 	// gaussian-distributed polydispersity
 	rsum3 = 0.0;
@@ -158,13 +180,21 @@ int main(int argc, char const *argv[])
 		r2 = drand48();
 
 		// calculate gaussian random variable using Box-Muller transform
-		grv = sqrt(-2.0*log(r1))*cos(2*PI*r2);
+		g1 = sqrt(-2.0*log(r1))*cos(2*PI*r2);
+		g2 = sqrt(-2.0*log(r1))*sin(2*PI*r2);
 
-		// get radius
-		radii[i] = grv*dr + 1.0;
+		// get radii from g1
+		radii[2*i] = g1*dr + 1.0;
+		radii[2*i + 1] = radii[2*i];
+
+		// get l0 from g2
+		l0[i] = (g2*dl0 + 2.0)*radii[2*i];
+		if (l0[i] < 0)
+			l0[i] = l0min;
 
 		// compute mass
-		mass[i] = (4.0/3.0)*PI*pow(radii[i],3.0);
+		mass[2*i] = (4.0/3.0)*PI*pow(radii[i],3.0);
+		mass[2*i + 1] = mass[2*i];
 
 		// add to cubed rsum
 		rsum3 += pow(radii.at(i),3.0);
@@ -176,18 +206,29 @@ int main(int argc, char const *argv[])
 
 
 	// box lengths (initially a cube)
-	L0 = pow(4.0*PI*rsum3/(3.0*phi0),1.0/3.0);
+	L0 = pow(8.0*PI*rsum3/(3.0*phi0),1.0/3.0);
 	vector<double> L(NDIM,L0);
+
+	// initialize particles
+	// relax
+	// add bond force to force update
+	// make new print function
+	// what to do when there is 1 extra frame than cm frame?
+	// would be WAY better to just print out zc in output file and call a day
+	
 
 	// initialize particle positions randomly throughout box
 	for (i=0; i<N; i++){
-		for (d=0; d<NDIM; d++)
-			pos[NDIM*i + d] = L[d]*drand48();
+		// first monomer = random
+		pos[2*NDIM*i] = L[0]*drand48();
+		pos[2*NDIM*i + 1] = L[1]*drand48();
+		pos[2*NDIM*i + 2] = L[2]*drand48();
+
+		// second monomer = along x
+		pos[2*NDIM*i + 3] = pos[2*NDIM*i] + l0[i];
+		pos[2*NDIM*i + 4] = pos[2*NDIM*i + 1];
+		pos[2*NDIM*i + 5] = pos[2*NDIM*i + 2];
 	}
-
-
-	// print positions to xyz file
-	printXYZ(xyzout,pos,radii,L,N);
 
 
 	// determine fundamental MD time unit
@@ -196,9 +237,6 @@ int main(int argc, char const *argv[])
 	dtMD 	= 1.0;
 	dt0 	= timeStepMag*dtMD;
 	dt 		= dt0;
-
-
-
 
 
 
@@ -317,7 +355,7 @@ int main(int argc, char const *argv[])
 	// linked-list variables
 	vector<int> head(NCELLS,0);
 	vector<int> last(NCELLS,0);
-	vector<int> list(N+1,0);
+	vector<int> list(NMTOT+1,0);
 
 
 
@@ -332,9 +370,9 @@ int main(int argc, char const *argv[])
 
 
 	// initialize velocity and force information
-	vector<double> v(NDIM*N,0.0);
-	vector<double> a(NDIM*N,0.0);
-	vector<double> F(NDIM*N,0.0);
+	vector<double> v(NDIM*NMTOT,0.0);
+	vector<double> a(NDIM*NMTOT,0.0);
+	vector<double> F(NDIM*NMTOT,0.0);
 
 	// FIRE VARIABLES
 	double P  		= 0;	
@@ -357,11 +395,14 @@ int main(int argc, char const *argv[])
 	// cell linked-list variables
 	int cellid, ci, cj, pi, pj, sctmp;
 
+	// dimer variables
+	double lx, ly, lz, l, ux, uy, uz, flx, fly, flz;
+
 	// loop until force relaxes
 	while ((fcheck > Ftol || npPMin < NMIN) && fireit < itmax){
 
 		// VELOCITY-VERLET UPDATE 1: POSITIONS
-		for (i=0; i<N; i++){
+		for (i=0; i<NMTOT; i++){
 			for(d=0; d<NDIM; d++){
 				// dof index
 				ind = NDIM*i + d;
@@ -382,7 +423,7 @@ int main(int argc, char const *argv[])
 			// reset linked list
 			list[i] = 0;
 		}
-		list[N] = 0;
+		list[NMTOT] = 0;
 
 
 		// reset linked list head
@@ -392,7 +433,7 @@ int main(int argc, char const *argv[])
 		}
 
 		// sort particles into linked list
-		for (i=0; i<N; i++){
+		for (i=0; i<NMTOT; i++){
 			// 1. get cell id of current particle position
 			cellid = 0;
 			sctmp = 1;
@@ -436,6 +477,13 @@ int main(int argc, char const *argv[])
 				while(pj > 0){
 					// real index of pj
 					j = pj - 1;	
+
+					// check if dimer pair
+					if ((i % 2 == 0 && j == i+1) || (j % 2 == 0 && i == j+1) ){
+						// update pj and continue
+						pj = list[pj];
+						continue;
+					}
 
 					// contact distance
 					sij = radii[i] + radii[j];
@@ -488,6 +536,13 @@ int main(int argc, char const *argv[])
 						// real index of pj
 						j = pj - 1;	
 
+						// check if dimer pair
+						if ((i % 2 == 0 && j == i+1) || (j % 2 == 0 && i == j+1) ){
+							// update pj and continue
+							pj = list[pj];
+							continue;
+						}
+
 						// contact distance
 						sij = radii[i] + radii[j];
 
@@ -536,8 +591,49 @@ int main(int argc, char const *argv[])
 		}
 
 
-		// VELOCITY-VERLET UPDATE 2: VELOCITIES AND ACCELERATION
+		// Add dimer bond force
 		for (i=0; i<N; i++){
+			// distance between pair images
+			lx = pos[2*NDIM*i + 3] - pos[2*NDIM*i];
+			lx -= L[0]*round(lx/L[0]);
+
+			ly = pos[2*NDIM*i + 4] - pos[2*NDIM*i + 1];
+			ly -= L[1]*round(ly/L[1]);
+
+			lz = pos[2*NDIM*i + 5] - pos[2*NDIM*i + 2];
+			lz -= L[2]*round(lz/L[2]);
+
+			// bond length
+			l = lx*lx + ly*ly + lz*lz;
+
+			// unit vector
+			ux = lx/l;
+			uy = ly/l;
+			uz = lz/l;
+
+			// force on 1 due to 2
+			ftmp = kl*(l - l0[i]);
+			flx = ftmp*ux;
+			fly = ftmp*uy;
+			flz = ftmp*uz;
+
+			// bonded force on monomer 1
+			F[2*NDIM*i] += flx;
+			F[2*NDIM*i + 1] += fly;
+			F[2*NDIM*i + 2] += flz;
+
+			// bonded force on monomer 2
+			F[2*NDIM*i + 3] -= flx;
+			F[2*NDIM*i + 4] -= fly;
+			F[2*NDIM*i + 5] -= flz;
+
+			// add to potential energy
+			U += 0.5*kl*pow(l - l0[i],2.0);
+		}
+
+
+		// VELOCITY-VERLET UPDATE 2: VELOCITIES AND ACCELERATION
+		for (i=0; i<NMTOT; i++){
 			for(d=0; d<NDIM; d++){
 				// dof index
 				ind = NDIM*i + d;
@@ -557,7 +653,7 @@ int main(int argc, char const *argv[])
 		fnorm = 0.0;
 		vnorm = 0.0;
 		P = 0.0;
-		for (i=0; i<N; i++){
+		for (i=0; i<NMTOT; i++){
 			for (d=0; d<NDIM; d++){
 				ind = NDIM*i + d;
 				fnorm 	+= F[ind]*F[ind];
@@ -569,7 +665,7 @@ int main(int argc, char const *argv[])
 		vnorm = sqrt(vnorm);
 
 		// update fcheck based on fnorm (= force per degree of freedom)
-		fcheck = fnorm/(NDIM*N);
+		fcheck = fnorm/(NDIM*NMTOT);
 
 		// update npPMin
 		if (fcheck < Ftol)
@@ -628,7 +724,7 @@ int main(int argc, char const *argv[])
 			}
 
 			// take half step backwards, reset velocities
-			for (i=0; i<N; i++){
+			for (i=0; i<NMTOT; i++){
 				for (d=0; d<NDIM; d++){
 					// dof index
 					ind = NDIM*i + d;
@@ -655,7 +751,7 @@ int main(int argc, char const *argv[])
 
 		// update velocities (s.d. vs inertial dynamics) only if forces are acting
 		if (fnorm > 0){
-			for (i=0; i<N; i++){
+			for (i=0; i<NMTOT; i++){
 				for (d=0; d<NDIM; d++){
 					// dof index
 					ind = NDIM*i + d;
@@ -695,10 +791,6 @@ int main(int argc, char const *argv[])
 	}
 
 
-
-
-
-
 	/* * * * * * * * * * * * * * * * * * 
 
 			DECOMPRESSION WITH
@@ -708,32 +800,36 @@ int main(int argc, char const *argv[])
 	 * * * * * * * * * * * * * * * * * */
 
 	// initialize contact network
-	int NPW = N*(N-1)/2;
+	int NPW = NMTOT*(NMTOT-1)/2;
 	vector<bool> cij(NPW,0);
-	vector<int> z(N,0);
+	vector<int> z(NMTOT,0);
 
 	// instantaneous phi
 	double phi = 0.0;
-	for (i=0; i<N; i++)
+	for (i=0; i<NMTOT; i++)
 		phi += mass[i];
 	phi /= L[0]*L[1]*L[2];
 
 	// decompression iterator
 	int it = 0;
+	double rscale;
 
 	// attraction parameters
 	double p1, u1, u2, h, lij;
 
-	// determine change in Lz
-	int NSTEPS = round((phi - phimin)/dphi);
-	double lzscale, rscale;
+	// strain parameters
+	double dgx, dgy, dgz;
+	dgx = 1.0 + dg*(1.0 - del);
+	dgy = 1.0 - (dg/(1.0 + dg))*(1 - del);
+	dgz = 1.0 + dg*del;
 
 	// determine frames to skip between xyz output
+	int NSTEPS = round((phi - phimin)/dphi);
 	int NXYZSTEPS = round((phi - phimin)/phiskip);
 	int NPHISKIP = NSTEPS/NXYZSTEPS;
 
 	// loop until phimin found
-	while (phi > phimin && it < itmax){
+	while ((phi > phimin || abs(U) > Umin) && it < itmax){
 		// reset FIRE variables that make have changed
 		fireit 		= 0;
 		fcheck 		= 10*Ftol;
@@ -747,7 +843,7 @@ int main(int argc, char const *argv[])
 		while ((fcheck > Ftol || npPMin < NMIN) && fireit < itmax){
 
 			// VELOCITY-VERLET UPDATE 1: POSITIONS
-			for (i=0; i<N; i++){
+			for (i=0; i<NMTOT; i++){
 				for(d=0; d<NDIM; d++){
 					// dof index
 					ind = NDIM*i + d;
@@ -771,7 +867,7 @@ int main(int argc, char const *argv[])
 				// reset linked list
 				list[i] = 0;
 			}
-			list[N] = 0;
+			list[NMTOT] = 0;
 
 
 			// reset linked list head
@@ -781,7 +877,7 @@ int main(int argc, char const *argv[])
 			}
 
 			// sort particles into linked list
-			for (i=0; i<N; i++){
+			for (i=0; i<NMTOT; i++){
 				// 1. get cell id of current particle position
 				cellid = 0;
 				sctmp = 1;
@@ -851,7 +947,7 @@ int main(int argc, char const *argv[])
 
 						// check for overlap, add to contacts
 						if (rij < sij*sij)
-							addContacts(i,j,cij,z,N);
+							addContacts(i,j,cij,z,NMTOT);
 
 						// update pj
 						pj = list[pj];
@@ -889,7 +985,7 @@ int main(int argc, char const *argv[])
 
 							// check for overlap, add to contacts
 							if (rij < sij*sij)
-								addContacts(i,j,cij,z,N);
+								addContacts(i,j,cij,z,NMTOT);
 
 							// update pj
 							pj = list[pj];
@@ -922,8 +1018,15 @@ int main(int argc, char const *argv[])
 						// real index of pj
 						j = pj - 1;	
 
+						// check if dimer pair
+						if ((i % 2 == 0 && j == i+1) || (j % 2 == 0 && i == j+1) ){
+							// update pj and continue
+							pj = list[pj];
+							continue;
+						}
+
 						// compute forces if previous overlapping
-						if (cij[cmindex(i,j,N)]){
+						if (cij[cmindex(i,j,NMTOT)]){
 							// contact distance
 							sij = radii[i] + radii[j];
 
@@ -990,8 +1093,15 @@ int main(int argc, char const *argv[])
 							// real index of pj
 							j = pj - 1;	
 
+							// check if dimer pair
+							if ((i % 2 == 0 && j == i+1) || (j % 2 == 0 && i == j+1) ){
+								// update pj and continue
+								pj = list[pj];
+								continue;
+							}
+
 							// compute forces if previous overlapping
-							if (cij[cmindex(i,j,N)]){
+							if (cij[cmindex(i,j,NMTOT)]){
 								// contact distance
 								sij = radii[i] + radii[j];
 
@@ -1054,9 +1164,48 @@ int main(int argc, char const *argv[])
 				}
 			}
 
+			// Add dimer bond force
+			for (i=0; i<N; i++){
+				// distance between pair images
+				lx = pos[2*NDIM*i + 3] - pos[2*NDIM*i];
+				lx -= L[0]*round(lx/L[0]);
+
+				ly = pos[2*NDIM*i + 4] - pos[2*NDIM*i + 1];
+				ly -= L[1]*round(ly/L[1]);
+
+				lz = pos[2*NDIM*i + 5] - pos[2*NDIM*i + 2];
+				lz -= L[2]*round(lz/L[2]);
+
+				// bond length
+				l = lx*lx + ly*ly + lz*lz;
+
+				// unit vector
+				ux = lx/l;
+				uy = ly/l;
+				uz = lz/l;
+
+				// force on 1 due to 2
+				ftmp = kl*(l - l0[i]);
+				flx = ftmp*ux;
+				fly = ftmp*uy;
+				flz = ftmp*uz;
+
+				// bonded force on monomer 1
+				F[2*NDIM*i] += flx;
+				F[2*NDIM*i + 1] += fly;
+				F[2*NDIM*i + 2] += flz;
+
+				// bonded force on monomer 2
+				F[2*NDIM*i + 3] -= flx;
+				F[2*NDIM*i + 4] -= fly;
+				F[2*NDIM*i + 5] -= flz;
+
+				// add to potential energy
+				U += 0.5*kl*pow(l - l0[i],2.0);
+			}
 
 			// VELOCITY-VERLET UPDATE 2: VELOCITIES AND ACCELERATION
-			for (i=0; i<N; i++){
+			for (i=0; i<NMTOT; i++){
 				for(d=0; d<NDIM; d++){
 					// dof index
 					ind = NDIM*i + d;
@@ -1076,7 +1225,7 @@ int main(int argc, char const *argv[])
 			fnorm = 0.0;
 			vnorm = 0.0;
 			P = 0.0;
-			for (i=0; i<N; i++){
+			for (i=0; i<NMTOT; i++){
 				for (d=0; d<NDIM; d++){
 					ind = NDIM*i + d;
 					fnorm 	+= F[ind]*F[ind];
@@ -1088,7 +1237,7 @@ int main(int argc, char const *argv[])
 			vnorm = sqrt(vnorm);
 
 			// update fcheck based on fnorm (= force per degree of freedom)
-			fcheck = fnorm/(NDIM*N);
+			fcheck = fnorm/(NDIM*NMTOT);
 
 			// update npPMin
 			if (fcheck < Ftol)
@@ -1149,7 +1298,7 @@ int main(int argc, char const *argv[])
 				}
 
 				// take half step backwards, reset velocities
-				for (i=0; i<N; i++){
+				for (i=0; i<NMTOT; i++){
 					for (d=0; d<NDIM; d++){
 						// dof index
 						ind = NDIM*i + d;
@@ -1176,7 +1325,7 @@ int main(int argc, char const *argv[])
 
 			// update velocities (s.d. vs inertial dynamics) only if forces are acting
 			if (fnorm > 0){
-				for (i=0; i<N; i++){
+				for (i=0; i<NMTOT; i++){
 					for (d=0; d<NDIM; d++){
 						// dof index
 						ind = NDIM*i + d;
@@ -1191,66 +1340,69 @@ int main(int argc, char const *argv[])
 			fireit++;
 		}
 
-		// check if FIRE converged
-		if (fireit == itmax){
-			cout << "	** FIRE minimization did not converge, fireit = " << fireit << ", itmax = " << itmax << "; ending." << endl;
-			return 1;
-		}
-		else{
-			cout << endl << endl;
-			cout << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&" << endl;
-			cout << "===========================================" << endl;
-			cout << " 	F I R E 						" << endl;
-			cout << "		M I N I M I Z A T I O N 	" << endl;
-			cout << "	 C O N V E R G E D! 			" << endl;
-			cout << "===========================================" << endl;
-			cout << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&" << endl;
-			cout << endl;
-			cout << "	** fireit = " << fireit << endl;
-			cout << "	** it = " << it << endl;
-			cout << "	** fcheck = " << fcheck << endl;
-			cout << "	** vnorm = " << vnorm << endl;
-			cout << "	** dt = " << dt << endl;
-			cout << "	** P = " << P << endl;
-			cout << "	** Pdir = " << P/(fnorm*vnorm) << endl;
-			cout << "	** alpha = " << alpha << endl;
-			cout << "	** U = " << U << endl;
-			cout << "	** phi = " << phi << endl << endl;
+		// print + continue regardless of convergence
+		cout << endl << endl;
+		cout << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&" << endl;
+		cout << "===========================================" << endl;
+		cout << " 	F I R E 						" << endl;
+		cout << "		M I N I M I Z A T I O N 	" << endl;
+		cout << "	 C O N V E R G E D! 			" << endl;
+		cout << "===========================================" << endl;
+		cout << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&" << endl;
+		cout << endl;
+		cout << "	** fireit = " << fireit << endl;
+		cout << "	** it = " << it << endl;
+		cout << "	** fcheck = " << fcheck << endl;
+		cout << "	** vnorm = " << vnorm << endl;
+		cout << "	** dt = " << dt << endl;
+		cout << "	** P = " << P << endl;
+		cout << "	** Pdir = " << P/(fnorm*vnorm) << endl;
+		cout << "	** alpha = " << alpha << endl;
+		cout << "	** U = " << U << endl;
+		cout << "	** phi = " << phi << endl << endl;
 
-			// print positions to xyz file during initial minimization
-			if (it % NPHISKIP == 0){
-				printXYZ(xyzout,pos,radii,L,N);
-				printCM(cmout,cij,NPW);
-			}
-		}
+		// print positions to xyz file during initial minimization
+		if (it % NPHISKIP == 0)
+			printXYZ(xyzout,pos,radii,L,z,NMTOT);
 
 		// incremement iterator
 		it++;
 
-		// scale particles and box lengths based on delta phi
-		lzscale = 1.0 + (dlz - 1.0)*(L0/L[2])/NSTEPS;
-		L[2] *= lzscale;
-		lc[2] *= lzscale;
+		// alternate volumetric strain and decompression
+		if (it % 2 == 0){
+			// even: deform boundary
+			L[0] *= dgx;
+			L[1] *= dgy;
+			L[2] *= dgz;
 
-		rscale = pow(lzscale*(1.0 - (dphi/phi)),1.0/NDIM);
-		for (i=0; i<N; i++){
-			mass[i] *= pow(rscale,NDIM);
-			radii[i] *= rscale;
+			// affine displacements
+			for (i=0; i<NMTOT; i++){
+				pos[i*NDIM] *= dgx;
+				pos[i*NDIM + 1] *= dgy;
+				pos[i*NDIM + 2] *= dgz;
+			}
+
+			// update linked list cell geometry
+			for (d=0; d<NDIM; d++)
+				lc[d] = L[d]/sc[d];
+		}
+		else{
+			// odd: shrink particles
+			rscale = pow((phi - dphi)/phi,1.0/NDIM);
+			for (i=0; i<NMTOT; i++){
+				mass[i] *= pow(rscale,NDIM);
+				radii[i] *= rscale;
+			}
+			for (i=0; i<N; i++)
+				l0[i] *= rscale;
 		}
 
 		// recompute phi
 		phi = 0.0;
-		for (i=0; i<N; i++)
+		for (i=0; i<NMTOT; i++)
 			phi += mass[i];
 		phi /= L[0]*L[1]*L[2]; 
-
-
-		// apply affine strain
-		for (i=0; i<N; i++)
-			pos[i*NDIM + 2] *= lzscale;
 	}
-
-	
 
 
 	// close objects
@@ -1287,7 +1439,7 @@ int main(int argc, char const *argv[])
 
 
 
-void printXYZ(ofstream& xyzout, vector<double>& pos, vector<double>& radii, vector<double>& L, int N){
+void printXYZ(ofstream &xyzout, vector<double> &pos, vector<double> &radii, vector<double> &L, vector<int> &z, int N){
 	// local variables
 	int i, d;
 	char atom = 'C';
@@ -1303,7 +1455,7 @@ void printXYZ(ofstream& xyzout, vector<double>& pos, vector<double>& radii, vect
 	// output xyz info
 	xyzout << N << endl;
 	xyzout << "Lattice=\"" << L[0] << " 0.0 0.0 0.0 " << L[1] << " 0.0 0.0 0.0 " << L[2] << "\" " << '\t';
-	xyzout << "Properties=species:S:1:pos:R:3:radius:R:1" << endl;
+	xyzout << "Properties=species:S:1:pos:R:3:radius:R:1:z:R:1" << endl;
 
 	// loop over particles, print positions to file
 	for (i=0; i<N; i++){
@@ -1315,7 +1467,10 @@ void printXYZ(ofstream& xyzout, vector<double>& pos, vector<double>& radii, vect
 			xyzout << setw(wnum) << setprecision(pnum) << pos[NDIM*i + d];
 
 		// output particle radius
-		xyzout << setw(wnum) << setprecision(pnum) << radii[i] << endl;
+		xyzout << setw(wnum) << setprecision(pnum) << radii[i];
+
+		// output number of contacts
+		xyzout << setw(wnum) << z[i] << endl;
 	}
 }
 

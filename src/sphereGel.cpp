@@ -201,10 +201,6 @@ int main(int argc, char const *argv[])
 	}
 
 
-	// print positions to xyz file
-	printXYZ(xyzout,pos,radii,L,N);
-
-
 	// determine fundamental MD time unit
 	double dtMD, dt0, dt;
 
