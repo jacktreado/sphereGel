@@ -372,7 +372,7 @@ int main(int argc, char const *argv[])
 	double alpha   	= alpha0;
 
 	double dtmax   	= 10*dt0;
-	double dtmin   	= 1e-8*dt0;
+	double dtmin   	= 1e-2*dt0;
 	dt 				= dt0;
 
 	int npPos      	= 0;
@@ -1242,15 +1242,15 @@ int main(int argc, char const *argv[])
 				// add to potential energy
 				U += 0.5*kl*pow(l - l0[i],2.0);
 
-				// add to stress tensor (note minus sign, keeps things positive)
-				S[0] -= lx*flx;
-				S[1] -= ly*fly;
-				S[2] -= lz*flz;
+				// // add to stress tensor (note minus sign, keeps things positive)
+				// S[0] -= lx*flx;
+				// S[1] -= ly*fly;
+				// S[2] -= lz*flz;
 
-				// sorted XY, XZ, YZ
-				S[3] -= lx*fly;
-				S[4] -= ly*flz;
-				S[5] -= ly*flz;
+				// // sorted XY, XZ, YZ
+				// S[3] -= lx*fly;
+				// S[4] -= ly*flz;
+				// S[5] -= ly*flz;
 			}	
 
 			// VELOCITY-VERLET UPDATE 2: VELOCITIES AND ACCELERATION
