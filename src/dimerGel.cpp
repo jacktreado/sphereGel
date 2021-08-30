@@ -7,7 +7,7 @@
 	Generate gel of spheres via athermal extension
 
 	compile: g++ -O3 src/dimerGel.cpp -o dgel.o
-	./dgel.o 32 0.1 1e-4 1e-4 0 0.05 1e-8 1 test.xyz test.cm
+	./dgel.o 32 0.1 1e-4 1e-4 0 0.05 1e-8 1 pos.test
 
 */
 
@@ -41,7 +41,7 @@ const double timeStepMag 	= 0.01;
 const double dr 			= 0.01;
 const double Umin 			= 1e-16;
 const double l0min 			= 1e-4;
-const double kl 			= 1.0;
+const double kl 			= 0.5;
 
 const double alpha0      	= 0.2;
 const double finc        	= 1.1;
@@ -57,8 +57,7 @@ const int itmax       		= 1e7;
 
 
 // function prototypes
-void printXYZ(ofstream &xyzout, vector<double> &pos, vector<double> &radii, vector<double> &L, vector<int> &z, int N);
-void printCM(ofstream &cmout, vector<bool> &cij, int NPW);
+void printPos(ofstream &posout, vector<double> &pos, vector<double> &radii, vector<double> &L, vector<double> &S, vector<int> &z, int N);
 int cmindex(int i, int j, int N);
 void addContacts(int i, int j, vector<bool> &cij, vector<int> &z, int N);
 
@@ -83,8 +82,7 @@ int main(int argc, char const *argv[])
 	string l2_str 		= argv[6];
 	string Ftol_str 	= argv[7];
 	string seed_str 	= argv[8];
-	string xyzFile 		= argv[9];
-	string cmFile 		= argv[10];
+	string posFile 		= argv[9];
 
 	stringstream Nss(N_str);
 	stringstream dl0ss(dl0_str);
@@ -108,18 +106,10 @@ int main(int argc, char const *argv[])
 	int NMTOT = 2*N;
 
 	// open xyz file
-	ofstream xyzout;
-	xyzout.open(xyzFile.c_str());
-	if (!xyzout.is_open()){
-		cout << "	** ERROR: xyz file " << xyzFile << " could not be opened, ending." << endl;
-		return 1;
-	}
-
-	// open contact matrix file
-	ofstream cmout;
-	cmout.open(cmFile.c_str());
-	if (!cmout.is_open()){
-		cout << "	** ERROR: cm file " << cmFile << " could not be opened, ending." << endl;
+	ofstream posout;
+	posout.open(posFile.c_str());
+	if (!posout.is_open()){
+		cout << "	** ERROR: xyz file " << posFile << " could not be opened, ending." << endl;
 		return 1;
 	}
 
@@ -144,8 +134,7 @@ int main(int argc, char const *argv[])
 	cout << "		l2 			= " << l2 << " 						" << endl;
 	cout << "		Ftol 		= " << Ftol << " 					" << endl;
 	cout << "		seed 		= " << seed << "					" << endl;
-	cout << "		xyz file 	= " << xyzFile << "					" << endl;
-	cout << "		cm file 	= " << cmFile << " 					" << endl;
+	cout << "		pos file 	= " << posFile << "					" << endl;
 	cout << endl;
 	cout << "=======================================================" << endl << endl;
 
@@ -163,7 +152,7 @@ int main(int argc, char const *argv[])
 	 * * * * * * * * * * * * * * * * * */
 
 	// initialization variables
-	double r1, r2, g1, g2, rsum3, rmax, L0;
+	double r1, r2, g1, g2, vp, vcap, rmax, L0;
 
 	// particle radii and positions
 	vector<double> radii(NMTOT,0.0);
@@ -172,7 +161,7 @@ int main(int argc, char const *argv[])
 	vector<double> pos(NDIM*NMTOT,0.0);
 
 	// gaussian-distributed polydispersity
-	rsum3 = 0.0;
+	vp = 0.0;
 	rmax = 0.0;
 	for (i=0; i<N; i++){
 		// generate random numbers
@@ -184,20 +173,23 @@ int main(int argc, char const *argv[])
 		g2 = sqrt(-2.0*log(r1))*sin(2*PI*r2);
 
 		// get radii from g1
-		radii[2*i] = g1*dr + 1.0;
-		radii[2*i + 1] = radii[2*i];
+		r1 = g1*dr + 1.0;
+		radii[2*i] = r1;
+		radii[2*i + 1] = r1;
 
 		// get l0 from g2
-		l0[i] = (g2*dl0 + 2.0)*radii[2*i];
+		l0[i] = (g2*dl0 + 2.0)*r1;
 		if (l0[i] < 0)
 			l0[i] = l0min;
 
 		// compute mass
-		mass[2*i] = (4.0/3.0)*PI*pow(radii[i],3.0);
+		mass[2*i] = (4.0/3.0)*PI*pow(r1,3.0);
 		mass[2*i + 1] = mass[2*i];
 
-		// add to cubed rsum
-		rsum3 += pow(radii.at(i),3.0);
+		// add to particle volume
+		vp += (8.0/3.0)*PI*pow(r1,3.0);
+		if (l0[i] < 2.0*r1)
+			vp -= (PI/12.0)*(4.0*r1 + l0[i])*pow(2.0*r1 - l0[i],2.0);
 
 		// determine max radius
 		if (radii[i] > rmax)
@@ -206,7 +198,7 @@ int main(int argc, char const *argv[])
 
 
 	// box lengths (initially a cube)
-	L0 = pow(8.0*PI*rsum3/(3.0*phi0),1.0/3.0);
+	L0 = pow(vp/(phi0),1.0/3.0);
 	vector<double> L(NDIM,L0);
 
 	// initialize particles
@@ -216,7 +208,6 @@ int main(int argc, char const *argv[])
 	// what to do when there is 1 extra frame than cm frame?
 	// would be WAY better to just print out zc in output file and call a day
 	
-
 	// initialize particle positions randomly throughout box
 	for (i=0; i<N; i++){
 		// first monomer = random
@@ -804,18 +795,27 @@ int main(int argc, char const *argv[])
 	vector<bool> cij(NPW,0);
 	vector<int> z(NMTOT,0);
 
+
+	// initialize stress tensor
+	vector<double> S(6,0.0);
+
 	// instantaneous phi
 	double phi = 0.0;
-	for (i=0; i<NMTOT; i++)
-		phi += mass[i];
-	phi /= L[0]*L[1]*L[2];
+	vp = 0.0;
+	for (i=0; i<N; i++){
+		r1 = radii[2*i];
+		vp += (8.0/3.0)*PI*pow(r1,3.0);
+		if (l0[i] < 2.0*r1)
+			vp -= (PI/12.0)*(4.0*r1 + l0[i])*pow(2.0*r1 - l0[i],2.0);
+	}
+	phi = vp/(L[0]*L[1]*L[2]);
 
 	// decompression iterator
 	int it = 0;
 	double rscale;
 
 	// attraction parameters
-	double p1, u1, u2, h, lij;
+	double p1, u1, u2, h, lij, fdirtmp;
 
 	// strain parameters
 	double dgx, dgy, dgz;
@@ -923,7 +923,14 @@ int main(int argc, char const *argv[])
 					// loop down neighbors of pi - 1 in same cell
 					while(pj > 0){
 						// real index of pj
-						j = pj - 1;	
+						j = pj - 1;
+
+						// check if dimer pair
+						if ((i % 2 == 0 && j == i+1) || (j % 2 == 0 && i == j+1) ){
+							// update pj and continue
+							pj = list[pj];
+							continue;
+						}
 
 						// contact distance
 						sij = radii[i] + radii[j];
@@ -963,6 +970,13 @@ int main(int argc, char const *argv[])
 							// real index of pj
 							j = pj - 1;	
 
+							// check if dimer pair
+							if ((i % 2 == 0 && j == i+1) || (j % 2 == 0 && i == j+1) ){
+								// update pj and continue
+								pj = list[pj];
+								continue;
+							}
+
 							// contact distance
 							sij = radii[i] + radii[j];
 							sij *= 1 + l2;
@@ -1000,6 +1014,7 @@ int main(int argc, char const *argv[])
 
 			// force computation using cell linked-lists
 			U = 0;
+			fill(S.begin(),S.end(),0.0);
 			for (ci=0; ci<NCELLS; ci++){
 
 				// get start of list of particles
@@ -1059,24 +1074,36 @@ int main(int argc, char const *argv[])
 		                    // attractive force
 		                    if (h < p1){
 		                        // scalar part of force
-		                        ftmp = 1 - h;
+		                        ftmp = (1 - h)/sij;
 
 		                        // potential
-		                        U = U + (0.5*sij*pow(1 - h,2.0) - u2);
+		                        U = U + (0.5*pow(1 - h,2.0) - u2);
 		                    }
 		                    else{
 		                       	// scalar part of force
-		                        ftmp = u1*(h - 1 - l2);
+		                        ftmp = u1*(h - 1 - l2)/sij;
 
 		                        // potential
-		                        U = U - 0.5*sij*u1*pow(h - 1 - l2,2.0);
+		                        U = U - 0.5*u1*pow(h - 1 - l2,2.0);
 		                    }
 
-							// add to forces
+							// add to forces & normal stresses
 							for (d=0; d<NDIM; d++){
-								F[NDIM*i + d] -= ftmp*(vij[d]/rij);
-								F[NDIM*j + d] += ftmp*(vij[d]/rij);
+								// force on i due to j
+								fdirtmp = -ftmp*(vij[d]/rij);
+
+								// forces (equal and opposit)
+								F[NDIM*i + d] += fdirtmp;
+								F[NDIM*j + d] -= fdirtmp;
+
+								// normal stresses
+								S[d] -= fdirtmp*vij[d];
 							}
+
+							// off diagonal stresses (sorted XY, XZ, YZ)
+							S[3] += vij[0]*((ftmp*vij[1])/rij);
+							S[4] += vij[0]*((ftmp*vij[2])/rij);
+							S[5] += vij[1]*((ftmp*vij[2])/rij);
 						}
 
 						// update pj
@@ -1134,24 +1161,36 @@ int main(int argc, char const *argv[])
 			                    // attractive force
 			                    if (h < p1){
 			                        // scalar part of force
-			                        ftmp = 1 - h;
+			                        ftmp = (1 - h)/sij;
 
 			                        // potential
-			                        U = U + 0.5*sij*pow(1 - h,2.0) - u2;
+			                        U = U + (0.5*pow(1 - h,2.0) - u2);
 			                    }
 			                    else{
 			                       	// scalar part of force
-			                        ftmp = u1*(h - 1 - l2);
+			                        ftmp = u1*(h - 1 - l2)/sij;
 
 			                        // potential
-			                        U = U - 0.5*sij*u1*pow(h - 1 - l2,2.0);
+			                        U = U - 0.5*u1*pow(h - 1 - l2,2.0);
 			                    }
 
-								// add to forces
+								// add to forces & normal stresses
 								for (d=0; d<NDIM; d++){
-									F[NDIM*i + d] -= ftmp*(vij[d]/rij);
-									F[NDIM*j + d] += ftmp*(vij[d]/rij);
+									// force on i due to j
+									fdirtmp = -ftmp*(vij[d]/rij);
+
+									// forces (equal and opposit)
+									F[NDIM*i + d] += fdirtmp;
+									F[NDIM*j + d] -= fdirtmp;
+
+									// normal stresses
+									S[d] -= fdirtmp*vij[d];
 								}
+
+								// off diagonal stresses (sorted XY, XZ, YZ)
+								S[3] += vij[0]*((ftmp*vij[1])/rij);
+								S[4] += vij[0]*((ftmp*vij[2])/rij);
+								S[5] += vij[1]*((ftmp*vij[2])/rij);
 							}
 
 							// update pj
@@ -1202,7 +1241,17 @@ int main(int argc, char const *argv[])
 
 				// add to potential energy
 				U += 0.5*kl*pow(l - l0[i],2.0);
-			}
+
+				// add to stress tensor (note minus sign, keeps things positive)
+				S[0] -= lx*flx;
+				S[1] -= ly*fly;
+				S[2] -= lz*flz;
+
+				// sorted XY, XZ, YZ
+				S[3] -= lx*fly;
+				S[4] -= ly*flz;
+				S[5] -= ly*flz;
+			}	
 
 			// VELOCITY-VERLET UPDATE 2: VELOCITIES AND ACCELERATION
 			for (i=0; i<NMTOT; i++){
@@ -1363,7 +1412,7 @@ int main(int argc, char const *argv[])
 
 		// print positions to xyz file during initial minimization
 		if (it % NPHISKIP == 0)
-			printXYZ(xyzout,pos,radii,L,z,NMTOT);
+			printPos(posout,pos,radii,L,S,z,NMTOT);
 
 		// incremement iterator
 		it++;
@@ -1398,16 +1447,19 @@ int main(int argc, char const *argv[])
 		}
 
 		// recompute phi
-		phi = 0.0;
-		for (i=0; i<NMTOT; i++)
-			phi += mass[i];
-		phi /= L[0]*L[1]*L[2]; 
+		vp = 0.0;
+		for (i=0; i<N; i++){
+			r1 = radii[2*i];
+			vp += (8.0/3.0)*PI*pow(r1,3.0);
+			if (l0[i] < 2.0*r1)
+				vp -= (PI/12.0)*(4.0*r1 + l0[i])*pow(2.0*r1 - l0[i],2.0);
+		}
+		phi = vp/(L[0]*L[1]*L[2]);
 	}
 
 
 	// close objects
-	xyzout.close();
-	cmout.close();
+	posout.close();
 
 	// print to console, return
 	cout << "	** FINISHED MAIN FOR sphereGel.cpp, ENDING." << endl << endl << endl;
@@ -1428,8 +1480,7 @@ int main(int argc, char const *argv[])
 
 	FUNCTIONS DEFINED
 
-	printXYZ 		: output particle positions to .xyz file for processing and visualization
-	printCM			: output contact matrix in a row vector / frame
+	printPos 		: output particle positions to .pos file for processing and visualization
 	cmindex 		: map (i,j) pairs to contact vector
 	addContacts 	: assign contacts to contact matrix and z vector
 
@@ -1439,13 +1490,12 @@ int main(int argc, char const *argv[])
 
 
 
-void printXYZ(ofstream &xyzout, vector<double> &pos, vector<double> &radii, vector<double> &L, vector<int> &z, int N){
+void printPos(ofstream &posout, vector<double> &pos, vector<double> &radii, vector<double> &L, vector<double> &S, vector<int> &z, int N){
 	// local variables
 	int i, d;
-	char atom = 'C';
 
 	// check to see if file is open
-	if (!xyzout.is_open()){
+	if (!posout.is_open()){
 		cout << "	** ERROR: IN outputxyz(), input xyzout has no open file, ending." << endl;
 		exit(1);
 	}
@@ -1453,37 +1503,24 @@ void printXYZ(ofstream &xyzout, vector<double> &pos, vector<double> &radii, vect
 		cout << "	** Printing xyz information to file." << endl;
 
 	// output xyz info
-	xyzout << N << endl;
-	xyzout << "Lattice=\"" << L[0] << " 0.0 0.0 0.0 " << L[1] << " 0.0 0.0 0.0 " << L[2] << "\" " << '\t';
-	xyzout << "Properties=species:S:1:pos:R:3:radius:R:1:z:R:1" << endl;
+	posout << N << endl;
+	posout << L[0] << "  " << L[1] << "  " << L[2] << endl;
+	posout << S[0] << "  " << S[1] << "  " << S[2] << endl;
+	posout << S[3] << "  " << S[4] << "  " << S[5] << endl;
 
 	// loop over particles, print positions to file
 	for (i=0; i<N; i++){
-		// output particle type
-		xyzout << setw(w) << atom;
-
 		// output particle positions
 		for (d=0; d<NDIM; d++)
-			xyzout << setw(wnum) << setprecision(pnum) << pos[NDIM*i + d];
+			posout << setw(wnum) << setprecision(pnum) << pos[NDIM*i + d];
 
 		// output particle radius
-		xyzout << setw(wnum) << setprecision(pnum) << radii[i];
+		posout << setw(wnum) << setprecision(pnum) << radii[i];
 
 		// output number of contacts
-		xyzout << setw(wnum) << z[i] << endl;
+		posout << setw(wnum) << z[i] << endl;
 	}
 }
-
-
-void printCM(ofstream& cmout, vector<bool>& cij, int NPW){
-	// local variables
-	int ci;
-
-	for (ci=0; ci<NPW; ci++)
-		cmout << setw(w) << cij[ci];
-	cmout << endl;
-}
-
 
 int cmindex(int i, int j, int N){
 	if (i > j)
@@ -1493,7 +1530,7 @@ int cmindex(int i, int j, int N){
 }
 
 
-void addContacts(int i, int j, vector<bool>& cij, vector<int>& z, int N){
+void addContacts(int i, int j, vector<bool> &cij, vector<int> &z, int N){
 	// local variables
 	int ci;
 

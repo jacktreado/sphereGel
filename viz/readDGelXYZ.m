@@ -16,6 +16,8 @@ fprintf('reading in data from %s, N = %d, size = %0.4g MB\n',fstr,N,fsize/1e6);
 % stuff to save
 MAXNFRAMES = 1e5;
 L = zeros(MAXNFRAMES,3);
+Snorm = zeros(MAXNFRAMES,3);
+Sshear = zeros(MAXNFRAMES,3);
 xpos = zeros(MAXNFRAMES,N);
 ypos = zeros(MAXNFRAMES,N);
 zpos = zeros(MAXNFRAMES,N);
@@ -29,14 +31,23 @@ while ~feof(fid)
     fprintf('\t ** on frame %d\n',frame);
     
     % read box info
-    ldata = textscan(fid,'Lattice="%f 0.0 0.0 0.0 %f 0.0 0.0 0.0 %f"',1);
+    ldata = textscan(fid,'%f %f %f',1);
     tline = fgetl(fid);
     L(frame,1) = ldata{1};
     L(frame,2) = ldata{2};
     L(frame,3) = ldata{3};
     
+    % read stress info
+    snrmdata = textscan(fid,'%f %f %f',1);
+    tline = fgetl(fid);
+    ssheardata = textscan(fid,'%f %f %f',1);
+    tline = fgetl(fid);
+    
+    Snorm(frame,:) = cell2mat(snrmdata)';
+    Sshear(frame,:) = cell2mat(ssheardata)';
+    
     % read position info
-    posdata = textscan(fid,'%*c %f %f %f %f %f',N);
+    posdata = textscan(fid,'%f %f %f %f %f',N);
     xpos(frame,:) = posdata{1}';
     ypos(frame,:) = posdata{2}';
     zpos(frame,:) = posdata{3}';
@@ -60,6 +71,8 @@ NFRAMES         = frame;
 
 % delete extra
 L(NFRAMES+1:end,:) = [];
+Snorm(NFRAMES+1:end,:) = [];
+Sshear(NFRAMES+1:end,:) = [];
 xpos(NFRAMES+1:end,:) = [];
 ypos(NFRAMES+1:end,:) = [];
 zpos(NFRAMES+1:end,:) = [];
@@ -75,6 +88,8 @@ data.ypos       = ypos;
 data.zpos       = zpos;
 data.radii      = radii;
 data.z          = z;
+data.Snorm      = Snorm;
+data.Sshear     = Sshear;
 
 % close fid
 fclose(fid);

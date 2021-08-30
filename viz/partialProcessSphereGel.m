@@ -1,5 +1,7 @@
 function partialProcessSphereGel(floc,fpattern,savestr)
 %% FUNCTION to process data from sphere gel .xyz files
+% NOTE: need to redo analysis of data on cluster (08/27), does not include
+% phiImg
 
 % Grid size (unit of length is mean particle radius)
 NGPERRADIUS = 6;
