@@ -1,8 +1,8 @@
 /*
 
 	Jack Treado
-	06/2020
-	sphereGel.cpp
+	08/2021
+	dimerGel.cpp
 
 	Generate gel of spheres via athermal extension
 
@@ -38,7 +38,7 @@ const int pnum 				= 12;
 const double phi0 			= 1.1;
 const double phimin 		= 0.3;
 const double timeStepMag 	= 0.01;
-const double dr 			= 0.01;
+const double dr 			= 0.05;
 const double Umin 			= 1e-16;
 const double l0min 			= 1e-4;
 const double kl 			= 0.5;
@@ -123,8 +123,7 @@ int main(int argc, char const *argv[])
 
 	// output opening statement to console
 	cout << "=======================================================" << endl << endl;
-	cout << "		sphereGel.cpp 									" << endl;
-	cout << "		Jack Treado, 2020   							" << endl << endl;
+	cout << "		dimerGel.cpp 									" << endl;
 	cout << "		Athermal gelation of densely-packed spheres 	" << endl;
 	cout << "		N 			= " << N << "						" << endl;
 	cout << "		dr 			= " << dr << " 						" << endl;
@@ -200,13 +199,6 @@ int main(int argc, char const *argv[])
 	// box lengths (initially a cube)
 	L0 = pow(vp/(phi0),1.0/3.0);
 	vector<double> L(NDIM,L0);
-
-	// initialize particles
-	// relax
-	// add bond force to force update
-	// make new print function
-	// what to do when there is 1 extra frame than cm frame?
-	// would be WAY better to just print out zc in output file and call a day
 	
 	// initialize particle positions randomly throughout box
 	for (i=0; i<N; i++){
