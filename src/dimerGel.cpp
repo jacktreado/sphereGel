@@ -829,7 +829,7 @@ int main(int argc, char const *argv[])
 	int NPHISKIP = NSTEPS/NXYZSTEPS;
 
 	// loop until phimin found
-	while ((phi > phimin || abs(U) > Umin) && it < itmax){
+	while (phi > phimin && it < itmax){
 		// reset FIRE variables that make have changed
 		fireit 		= 0;
 		fcheck 		= 10*Ftol;
