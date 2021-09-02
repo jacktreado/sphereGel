@@ -17,7 +17,7 @@ else
 end
 
 % number of snapshots
-NSNAPS = 5;
+NSNAPS = 10;
 
 %% Loop over files, extract structural features
 
