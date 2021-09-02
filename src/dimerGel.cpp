@@ -4,7 +4,7 @@
 	08/2021
 	dimerGel.cpp
 
-	Generate gel of spheres via athermal extension
+	Generate gel of dimers via athermal extension
 
 	compile: g++ -O3 src/dimerGel.cpp -o dgel.o
 	./dgel.o 32 0.1 1e-4 1e-4 0 0.05 1e-8 1 pos.test
@@ -60,6 +60,7 @@ const int itmax       		= 1e7;
 void printPos(ofstream &posout, vector<double> &pos, vector<double> &radii, vector<double> &L, vector<double> &S, vector<int> &z, int N);
 int cmindex(int i, int j, int N);
 void addContacts(int i, int j, vector<bool> &cij, vector<int> &z, int N);
+void cellLinkedList(vector<int> &sc, vector<double> &lc, vector< vector<int> > &nn, int &NCELLS, vector<double> &L, double boxsize);
 
 // MAIN
 int main(int argc, char const *argv[])
@@ -77,7 +78,7 @@ int main(int argc, char const *argv[])
 	string N_str 		= argv[1];
 	string dl0_str 		= argv[2];
 	string dphi_str 	= argv[3];
-	string dg_str 		= argv[4];
+	string dg_str 		= argv[4]; 	// NOTE: in "units" of delta_phi, so will scale with dphi parameter
 	string del_str 		= argv[5];
 	string l2_str 		= argv[6];
 	string Ftol_str 	= argv[7];
@@ -124,7 +125,7 @@ int main(int argc, char const *argv[])
 	// output opening statement to console
 	cout << "=======================================================" << endl << endl;
 	cout << "		dimerGel.cpp 									" << endl;
-	cout << "		Athermal gelation of densely-packed spheres 	" << endl;
+	cout << "		Athermal gelation of densely-packed dimers 		" << endl;
 	cout << "		N 			= " << N << "						" << endl;
 	cout << "		dr 			= " << dr << " 						" << endl;
 	cout << "		dphi 		= " << dphi << " 					" << endl;
@@ -199,6 +200,7 @@ int main(int argc, char const *argv[])
 	// box lengths (initially a cube)
 	L0 = pow(vp/(phi0),1.0/3.0);
 	vector<double> L(NDIM,L0);
+	double Lmin;
 	
 	// initialize particle positions randomly throughout box
 	for (i=0; i<N; i++){
@@ -232,113 +234,24 @@ int main(int argc, char const *argv[])
 
 	 * * * * * * * * * * * * * * * * * */
 
-	// Cell linked-list variables
+	// min box size
+	double boxsize = 2.1*rmax;
+	bool resetCLL;
+	int NCELLS = 1;
 
-	// cell box lengths in each direction
+	// number of boxes and lengths in each direction
 	vector<int> sc(NDIM,0);
 	vector<double> lc(NDIM,0.0);
-	int NCELLS = 1;
-	for (d=0; d<NDIM; d++){
-		// determine number of cells along given dimension by rmax
-		sc[d] = round(L[d]/(2.1*rmax));
-
-		// just in case, if < 3, change to 3 so cell neighbor checking will work
-		if (sc[d] < 3)
-			sc[d] = 3;
-
-		// determine cell box length by number of cells
-		lc[d] = L[d]/sc[d];
-
-		// count total number of cells
-		NCELLS *= sc[d];
-	}
-
-	// neighbor cells for each cell (26 neighbors / cell)
-	int zi, scx, scy, scxy;
-	int nntmp0, nntmp1, nntmp2, nntmp3, nntmp4;
 	vector< vector<int> > nn;
-	nn.resize(NCELLS);
 
-	scx = sc[0];
-	scy = sc[1];
-	scxy = scx*scy;
-
-	// loop over cells, save neighbor for each cell index
-	for (i=0; i<NCELLS; i++){
-		// reshape entry
-		nn[i].resize(NNN);
-
-		// z sclice
-		zi = i/scxy;		
-		
-		// faces
-		nntmp0 		= (i+NCELLS-1) % NCELLS; 			// left neighbor (i-1)
-		nntmp1 		= i-scx;							// bottom neighbor (j-1)
-		nntmp2 		= (i+NCELLS-scxy) % NCELLS;			// backward neighbor (k-1)
-		nn[i][0] 	= (i+1) % NCELLS; 					// right neighbor (i+1)
-		nn[i][1] 	= i+scx;							// top neighbor (j+1)
-		nn[i][2] 	= (i+scxy) % NCELLS;				// forward neighbor (k+1)		
-
-		// y-direction bc
-		if (i-zi*scxy < scx)							// if on bottom row, look up (y direction)
-			nntmp1 = i-scx+scxy;	
-		if ((i+scx)/(scxy) > zi)						// if on top row, look down (y direction)
-			nn[i][1] = i-scxy+scx;	
-
-		// edges
-
-		// * xy plane
-		nn[i][3] = nntmp1 + 1;							// i+1, j-1
-		nn[i][4] = nn[i][1] + 1;						// i+1, j+1
-
-		// * xz plane
-		nn[i][5] = (nntmp2 + 1) % NCELLS;				// i+1, k-1
-		nn[i][6] = (nn[i][2] + 1) % NCELLS;				// i+1, k+1
-
-		// * yz plane
-		nntmp3 		= nntmp2 - scx;						// j-1, k-1
-		nn[i][7] 	= nntmp2 + scx;						// j+1, k-1
-		nntmp4  	= nn[i][2] - scx;					// j-1, k+1
-		nn[i][8] 	= nn[i][2] + scx; 					// j+1, k+1
-
-		// y-direction bc
-		if (i-zi*scxy < scx){							// if on bottom row, look up (y direction)
-			nntmp3 = nntmp2-scx+scxy;
-			nntmp4 = nn[i][2]-scx+scxy;	
-		}
-		if ((i+scx)/scxy > zi){							// if on top row, look down (y direction)
-			nn[i][7] = nntmp2-scxy+scx;
-			nn[i][8] = nn[i][2]-scxy+scx;			
-		}
-		
-
-
-		// cubic vertices
-		nn[i][9] = (nntmp3 + 1) % NCELLS; 				// i+1, j-1, k-1
-		nn[i][10] = (nn[i][7] + 1) % NCELLS; 			// i+1, j+1, k-1
-		nn[i][11] = (nntmp4 + 1) % NCELLS; 				// i+1, j-1, k+1
-		nn[i][12] = (nn[i][8] + 1) % NCELLS; 			// i+1, j+1, k+1
-
-
-
-		// right BC
-		if ((i+1) % scx == 0){
-			nn[i][0] = i-scx+1;
-			nn[i][3] = nntmp1-scx+1;
-			nn[i][4] = nn[i][1]-scx+1;
-			nn[i][5] = nntmp2-scx+1;
-			nn[i][6] = nn[i][2]-scx+1;
-			nn[i][9] = nntmp3-scx+1;
-			nn[i][10] = nn[i][7]-scx+1;
-			nn[i][11] = nntmp4-scx+1;
-			nn[i][12] = nn[i][8]-scx+1;
-		}
-	} 
+	// use function to initialize cell linked list and box neighbors
+	cellLinkedList(sc,lc,nn,NCELLS,L,boxsize);
 
 	// linked-list variables
 	vector<int> head(NCELLS,0);
 	vector<int> last(NCELLS,0);
 	vector<int> list(NMTOT+1,0);
+
 
 
 
@@ -811,6 +724,7 @@ int main(int argc, char const *argv[])
 
 	// strain parameters
 	double dgx, dgy, dgz;
+	dg *= dphi;
 	dgx = 1.0 + dg*(1.0 - del);
 	dgy = 1.0 - (dg/(1.0 + dg))*(1 - del);
 	dgz = 1.0 + dg*del;
@@ -1428,6 +1342,51 @@ int main(int argc, char const *argv[])
 			// update linked list cell geometry
 			for (d=0; d<NDIM; d++)
 				lc[d] = L[d]/sc[d];
+
+			// if any lc is smaller than what box size should be, reset 
+			rmax = 0.0;
+			for (i=0; i<N; i++){
+				if (radii[2*i] > rmax)
+					rmax = radii[2*i];
+			}
+
+			resetCLL = 0;
+			boxsize = 2.1*rmax;
+			for (d=0; d<NDIM; d++){
+				if (lc[d] < boxsize){
+					resetCLL = 1;
+					break;
+				}
+			}
+
+			// check if L is too small
+			Lmin = 1e6;
+			for (d=0; d<NDIM; d++){
+				if (L[d] < Lmin)
+					Lmin = L[d];
+			}
+
+			// if too small, stop box deformation
+			if (Lmin < 0.5*L0){
+				dgx = 1.0;
+				dgy = 1.0;
+				dgz = 1.0;
+			}
+
+			if (resetCLL){
+				cout << "** Need to reset box size, lc < boxsize" << endl;
+				cellLinkedList(sc,lc,nn,NCELLS,L,boxsize);
+				cout << "sc[0]=" << sc[0] << ", ";
+				cout << "sc[1]=" << sc[1] << ", ";
+				cout << "sc[2]=" << sc[2] << ", ";
+				cout << endl;
+				cout << "lc[0]=" << lc[0] << ", ";
+				cout << "lc[1]=" << lc[1] << ", ";
+				cout << "lc[2]=" << lc[2] << ", ";
+				cout << endl;
+				head.resize(NCELLS);
+				last.resize(NCELLS);
+			}
 		}
 		else{
 			// odd: shrink particles
@@ -1542,5 +1501,112 @@ void addContacts(int i, int j, vector<bool> &cij, vector<int> &z, int N){
 	z[j]++;
 }
 
+
+
+
+// function to set / reset cell linked list based on particle size
+void cellLinkedList(vector<int> &sc, vector<double> &lc, vector< vector<int> > &nn, int &NCELLS, vector<double> &L, double boxsize){
+	// local variables
+	int d, i;
+
+	// cell box lengths in each direction
+	NCELLS = 1;
+	for (d=0; d<NDIM; d++){
+		// determine number of cells along given dimension by rmax
+		sc[d] = round(L[d]/boxsize);
+
+		// just in case, if < 3, change to 3 so cell neighbor checking will work
+		if (sc[d] < 3)
+			sc[d] = 3;
+
+		// determine cell box length by number of cells
+		lc[d] = L[d]/sc[d];
+
+		// count total number of cells
+		NCELLS *= sc[d];
+	}
+
+	// neighbor cells for each cell (26 neighbors / cell)
+	int zi, scx, scy, scxy;
+	int nntmp0, nntmp1, nntmp2, nntmp3, nntmp4;
+	nn.clear();
+	nn.resize(NCELLS);
+
+	scx = sc[0];
+	scy = sc[1];
+	scxy = scx*scy;
+
+	// loop over cells, save neighbor for each cell index
+	for (i=0; i<NCELLS; i++){
+		// reshape entry
+		nn[i].resize(NNN);
+
+		// z sclice
+		zi = i/scxy;		
+		
+		// faces
+		nntmp0 		= (i+NCELLS-1) % NCELLS; 			// left neighbor (i-1)
+		nntmp1 		= i-scx;							// bottom neighbor (j-1)
+		nntmp2 		= (i+NCELLS-scxy) % NCELLS;			// backward neighbor (k-1)
+		nn[i][0] 	= (i+1) % NCELLS; 					// right neighbor (i+1)
+		nn[i][1] 	= i+scx;							// top neighbor (j+1)
+		nn[i][2] 	= (i+scxy) % NCELLS;				// forward neighbor (k+1)		
+
+		// y-direction bc
+		if (i-zi*scxy < scx)							// if on bottom row, look up (y direction)
+			nntmp1 = i-scx+scxy;	
+		if ((i+scx)/(scxy) > zi)						// if on top row, look down (y direction)
+			nn[i][1] = i-scxy+scx;	
+
+		// edges
+
+		// * xy plane
+		nn[i][3] = nntmp1 + 1;							// i+1, j-1
+		nn[i][4] = nn[i][1] + 1;						// i+1, j+1
+
+		// * xz plane
+		nn[i][5] = (nntmp2 + 1) % NCELLS;				// i+1, k-1
+		nn[i][6] = (nn[i][2] + 1) % NCELLS;				// i+1, k+1
+
+		// * yz plane
+		nntmp3 		= nntmp2 - scx;						// j-1, k-1
+		nn[i][7] 	= nntmp2 + scx;						// j+1, k-1
+		nntmp4  	= nn[i][2] - scx;					// j-1, k+1
+		nn[i][8] 	= nn[i][2] + scx; 					// j+1, k+1
+
+		// y-direction bc
+		if (i-zi*scxy < scx){							// if on bottom row, look up (y direction)
+			nntmp3 = nntmp2-scx+scxy;
+			nntmp4 = nn[i][2]-scx+scxy;	
+		}
+		if ((i+scx)/scxy > zi){							// if on top row, look down (y direction)
+			nn[i][7] = nntmp2-scxy+scx;
+			nn[i][8] = nn[i][2]-scxy+scx;			
+		}
+		
+
+
+		// cubic vertices
+		nn[i][9] = (nntmp3 + 1) % NCELLS; 				// i+1, j-1, k-1
+		nn[i][10] = (nn[i][7] + 1) % NCELLS; 			// i+1, j+1, k-1
+		nn[i][11] = (nntmp4 + 1) % NCELLS; 				// i+1, j-1, k+1
+		nn[i][12] = (nn[i][8] + 1) % NCELLS; 			// i+1, j+1, k+1
+
+
+
+		// right BC
+		if ((i+1) % scx == 0){
+			nn[i][0] = i-scx+1;
+			nn[i][3] = nntmp1-scx+1;
+			nn[i][4] = nn[i][1]-scx+1;
+			nn[i][5] = nntmp2-scx+1;
+			nn[i][6] = nn[i][2]-scx+1;
+			nn[i][9] = nntmp3-scx+1;
+			nn[i][10] = nn[i][7]-scx+1;
+			nn[i][11] = nntmp4-scx+1;
+			nn[i][12] = nn[i][8]-scx+1;
+		}
+	} 
+}
 
 
