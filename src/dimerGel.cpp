@@ -1146,7 +1146,8 @@ int main(int argc, char const *argv[])
 			                    h = rij/sij;
 			                    
 			                    // lij: effective adhesion strength based on contacts
-			                    lij = 0.25*l2*((1/z[i]) + (1/z[j]));
+			                    // lij = 0.25*l2*((1/z[i]) + (1/z[j]));
+			                    lij = 0.75*l2;
 			                    p1 = 1.0 + lij;
 			                    u1 = lij/(l2 - lij);
 			                    u2 = l2*lij;
