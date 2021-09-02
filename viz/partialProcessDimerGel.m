@@ -4,7 +4,7 @@ function partialProcessDimerGel(floc,fpattern,savestr)
 % phiImg
 
 % Grid size (unit of length is mean particle radius)
-NGPERRADIUS = 6;
+NGPERRADIUS = 7;
 g = 1.0/NGPERRADIUS;
 
 % get list of files with pattern
@@ -17,7 +17,7 @@ else
 end
 
 % number of snapshots
-NSNAPS = 6;
+NSNAPS = 5;
 
 %% Loop over files, extract structural features
 
@@ -172,13 +172,13 @@ for ss = 1:NS
 
         % get grid of all points
         [GRIDX, GRIDY, GRIDZ] = meshgrid(gx,gy,gz);
+        
+         % print to console
+        fprintf('** ** (%d/%d, %d/%d) On frame %d, adding sphere %d / %d to image \n',ss,NS,kk,NSNAPS,ii);
 
         % fill image matrix
         binaryLattice = zeros(nx,ny,nz);
         for nn = 1:N
-            % print to console
-            fprintf('** ** (%d/%d) On frame %d / %d, Adding sphere %d / %d to image \n',ss,NS,ii,NRIGID,nn,N);
-
             % particle positions
             xi = x(nn);
             yi = y(nn);
@@ -202,8 +202,8 @@ for ss = 1:NS
         phiImgList(ss,kk) = mean(binaryLattice,'all');
 
         % Use external function to plot correlation 
-        fprintf('\t ** frame %d, computing correlation functions...',ii + 1);
-        [kbinList{ss,kk}, skList{ss,kk}, ~, ~, ~, lambda, ~] = fourierSpaceCorrelation(binaryLattice,L(ii+1,:));
+        fprintf('\t ** frame %d, computing correlation functions...',ii);
+        [kbinList{ss,kk}, skList{ss,kk}, ~, ~, ~, lambda, ~] = fourierSpaceCorrelation(binaryLattice,L(ii,:));
         fprintf('\t done computing correlation functions.\n\n');
         
         % sort eigenvalues
@@ -261,10 +261,6 @@ save(savestr,'fnameList','paramList','N_LIST','SNAP_LIST','kbinList','LList','ra
 
 
 end
-
-%% Function to compute g(r)
-
-% compute pair correlation function to detect true structural change
 
 
 
