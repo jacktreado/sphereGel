@@ -48,7 +48,7 @@ for seed in `seq $startSeed $endSeed`; do
     seeddir="$simdatadir"/"$fpattern"
     mkdir -p $seeddir
     ftype="$seeddir"/"$fpattern"
-	MCODE="addpath ~/sphereGel/src; cahnHilliard($N,$NPRINT,$Lx,$Ly,$Lz,$phi0,$seed,'$ftype'); quit"
+	MCODE="addpath ~/sphereGel/src; cahnHilliard($NT,$NPRINT,$Lx,$Ly,$Lz,$phi0,$seed,'$ftype'); quit"
 
 	# add to task file
 	echo matlab -nodisplay -r \""$MCODE"\" >> $taskf
