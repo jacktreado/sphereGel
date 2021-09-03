@@ -4,7 +4,7 @@
 maindir=~/flowers/phasesep
 
 # directory for all output for cell simulations
-outputdir=/gpfs/loomis/project/fas/ohern/jdt45/flowers/dimerGel
+outputdir=/gpfs/loomis/project/fas/ohern/jdt45/flowers
 
 # directory for simulations specific to sphereGel
 simtypedir=$outputdir/dimerGel
