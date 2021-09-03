@@ -44,7 +44,10 @@ for seed in `seq $startSeed $endSeed`; do
     let fcount=$fcount+1
 
     # string for task file
-    ftype="$simdatadir"/"$basestr"_seed"$seed"
+    fpattern="$basestr"_seed"$seed"
+    seeddir="$simdatadir"/"$fpattern"
+    mkdir -p $seeddir
+    ftype="$seeddir"/"$fpattern"
 	MCODE="addpath ~/sphereGel/src; cahnHilliard($N,$NPRINT,$Lx,$Ly,$Lz,$phi0,$seed,'$ftype'); quit"
 
 	# add to task file
