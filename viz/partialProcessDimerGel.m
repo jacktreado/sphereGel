@@ -226,6 +226,28 @@ for ss = 1:NS
         SiList{ss,kk} = nematicOrder(x,y,z,r,Lx,Ly,Lz,4.0);
     end
     fprintf('\t ** ...done populating spheres onto lattice.\n\n');
+    
+    % save matfile as you go
+    saveStruct.fnameList = fnameList(~fskip(1:ss));
+    saveStruct.paramList = paramList(~fskip(1:ss),:);
+    saveStruct.N_LIST = N_LIST(~fskip(1:ss));
+    saveStruct.SNAP_LIST = SNAP_LIST(~fskip(1:ss),:);
+    saveStruct.phiImgList = phiImgList(~fskip(1:ss),:);
+    saveStruct.LList = LList(~fskip(1:ss),:);
+    saveStruct.radiiList = radiiList(~fskip(1:ss),:);
+    saveStruct.xposList = xposList(~fskip(1:ss),:);
+    saveStruct.yposList = yposList(~fskip(1:ss),:);
+    saveStruct.zposList = zposList(~fskip(1:ss),:);
+    saveStruct.zList = zList(~fskip(1:ss),:);
+    saveStruct.skList = skList(~fskip(1:ss),:);
+    saveStruct.kbinList = kbinList(~fskip(1:ss),:);
+    saveStruct.KgList = KgList(~fskip(1:ss),:);
+    saveStruct.k2List = k2List(~fskip(1:ss),:);
+    saveStruct.xiList = xiList(~fskip(1:ss),:);
+    saveStruct.SiList = SiList(~fskip(1:ss),:);
+    saveStruct.SnormList = SnormList(~fskip(1:ss),:);
+    saveStruct.NS = sum(~fskip(1:ss));
+    save(savestr,'-struct','saveStruct');
 end
 
 % remove extra files
