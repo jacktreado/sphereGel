@@ -4,7 +4,7 @@ function partialProcessDimerGel(floc,fpattern,savestr)
 % phiImg
 
 % Grid size (unit of length is mean particle radius)
-NGPERRADIUS = 7;
+NGPERRADIUS = 8;
 g = 1.0/NGPERRADIUS;
 
 % get list of files with pattern
@@ -177,7 +177,7 @@ for ss = 1:NS
         fprintf('** ** (%d/%d, %d/%d) On frame %d, adding sphere %d / %d to image \n',ss,NS,kk,NSNAPS,ii);
 
         % fill image matrix
-        binaryLattice = zeros(nx,ny,nz);
+        binaryLattice = zeros(ny,nx,nz);
         for nn = 1:N
             % particle positions
             xi = x(nn);
