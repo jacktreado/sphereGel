@@ -1,6 +1,7 @@
-function cahnHilliardStrain(NT, NPRINT, NSKIPSTRAIN, Lx0, Ly0, Lz0, dx, dy, dz, phi0, seed, ftype)
+function cahnHilliardUniExt(NT, NPRINT, NSKIPSTRAIN, Lx, Ly, Lz0, phi0, seed, ftype)
 %% FUNCTION TO SIMULATION CAHN-HILLIARD EQUATION 
 % in 3D with variable seeds, parameters and initial conditions
+% -- Need to figure out odd integers
 
 % set random seed
 rng(seed);
@@ -12,29 +13,21 @@ NDIM    = 3;
 dt      = 0.01;
 
 % get max possible matrix size
-Lxmax = 2*Lx0;
-Lymax = 2*Ly0;
 Lzmax = 2*Lz0;
 
 % initialize Lx, Ly, Lz
-Lx = Lx0;
-Ly = Ly0;
 Lz = Lz0;
-
-% use fixed vectors
-rx = 1:Lx;
-ry = 1:Ly;
 rz = 1:Lz;
 
 % concentration field (pad to max)
-phi             = zeros(Lymax,Lxmax,Lzmax);
-phi0mat         = repmat(phi0,Lymax,Lxmax,Lzmax);
-phi(ry,rx,rz)   = phi0mat(ry,rx,rz) + 0.1*randn(Ly,Lx,Lz);
+phi             = zeros(Ly,Lx,Lzmax);
+phi0mat         = repmat(phi0,Ly,Lx,Lzmax);
+phi(:,:,rz)     = phi0mat(:,:,rz) + 0.1*randn(Ly,Lx,Lz);
 psi             = phi.^3 - phi;
 
 % FFT phi ONCE (is updated in Euler, so no need to constantly FFT back and
 % forth)
-fphi    = fftn(phi(ry,rx,rz));
+fphi    = fftn(phi(:,:,rz));
 
 % track time
 t = 0.0;
@@ -58,26 +51,26 @@ K4 = K2.^2;
 % time loop
 for tt = 1:NT
     % strain box
-    if mod(tt,NSKIPSTRAIN) == 0
-        % increment box length
-        if Lx + dx <= Lxmax
-            Lx = Lx + dx;
+    if mod(tt,NSKIPSTRAIN) == 0 && Lz + 1 <= Lzmax
+        % linearly interpolate
+        sc = (Lz - (1:Lz-1))./Lz;
+        fwd = 2:Lz;
+        bwd = 1:Lz-1;
+        sc = reshape(sc,1,1,Lz-1);
+        fwd = reshape(fwd,1,1,Lz-1);
+        bwd = reshape(bwd,1,1,Lz-1);
+        for xx = 1:Lx
+            for yy = 1:Ly
+                phi(yy,xx,Lz+1) = phi(yy,xx,Lz);
+                phi(yy,xx,fwd) = sc.*(phi(yy,xx,fwd) - phi(yy,xx,bwd)) + phi(yy,xx,bwd);
+            end
         end
-        if Ly + dy <= Lymax
-            Ly = Ly + dy;
-        end
-        if Lz + dz <= Lzmax
-            Lz = Lz + dz;
-        end
+        Lz = Lz + 1;
         
         % reset range
-        rxnew = 1:Lx;
-        rynew = 1:Ly;
-        rznew = 1:Lz;
+        rz = 1:Lz;
         
         % wavevectors
-        kx = karray(Lx);
-        ky = karray(Ly);
         kz = karray(Lz);
 
         % matrices
@@ -85,7 +78,8 @@ for tt = 1:NT
         K2 = KX.^2 + KY.^2 + KZ.^2;
         K4 = K2.^2;
         
-        % linearly interpolate
+        % update fourier version of phi
+        fphi = fftn(phi(:,:,rz));
     end
     % Print to console and figure
     if mod(tt,NPRINT) == 0
@@ -95,18 +89,18 @@ for tt = 1:NT
         % print configuration
         fstr = [ftype '_' num2str(frame) '.pos'];
         frame = frame + 1;
-        plot2File(fstr,phi,t,dt,Lx,Ly,Lz);
+        plot2File(fstr,phi(:,:,rz),t,dt,Lx,Ly,Lz);
     end
     
     % FFT phi and psi
-    fpsi = fftn(psi(ry,rx,rz));
+    fpsi = fftn(psi(:,:,rz));
     
     % update phi based on semi-implicit scheme in Fourier space
     fphi = (fphi - dt.*K2.*fpsi)./(1 + K4.*dt);
     
     % IFFT back to update psi
-    phi(ry,rx,rz) = ifftn(fphi);
-    psi(ry,rx,rz) = phi(ry,rx,rz).^3 - phi(ry,rx,rz);
+    phi(:,:,rz) = ifftn(fphi);
+    psi(:,:,rz) = phi(:,:,rz).^3 - phi(:,:,rz);
     
     % update time
     t = t + dt;

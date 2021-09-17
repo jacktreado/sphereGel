@@ -19,9 +19,9 @@ mkdir -p out
 
 # inputs
 N=$1
-dl0=$2
-dg=$3
-del=$4
+dg=$2
+del=$3
+cda=$4
 l2=$5
 partition=$6
 time=$7
@@ -30,14 +30,14 @@ numRuns=$9
 startSeed="${10}"
 
 # other parameters
-dphi=1e-4
-Ftol=1e-8
+dl0=0.1
+Ftol=1e-10
 
 let numSeeds=$numSeedsPerRun*$numRuns
 let endSeed=$startSeed+$numSeeds-1
 
 # name strings
-basestr=dgel_N"$N"_dl0"$dl0"_dg"$dg"_del"$del"_l2"$l2"
+basestr=dgel_N"$N"_dg"$dg"_del"$del"_cda"$cda"_l2"$l2"
 runstr="$basestr"_startseed"$startSeed"_endseed"$endSeed"
 
 # make directory specific for this simulation

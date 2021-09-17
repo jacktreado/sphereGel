@@ -7,8 +7,12 @@
 	Generate gel of dimers via athermal extension
 
 	compile: g++ -O3 src/dimerGel.cpp -o dgel.o
-	./dgel.o 32 0.1 1e-4 1e-4 0 0.05 1e-8 1 pos.test
+	./dgel.o 32 0.1 2 1 1 0.05 1e-10 1 pos.test
+	
 
+	TO-DO: 09/15
+		* Fix stalled FIRE bug
+		* put on cluster, loop over l2, del, cda
 */
 
 // preprocessor directives
@@ -35,13 +39,14 @@ const int w 				= 6;
 const int wnum 				= 25;
 const int pnum 				= 12;
 
-const double phi0 			= 1.1;
+const double phi0 			= 1.0;
 const double phimin 		= 0.3;
 const double timeStepMag 	= 0.01;
 const double dr 			= 0.05;
 const double Umin 			= 1e-16;
 const double l0min 			= 1e-4;
 const double kl 			= 0.5;
+const double dphi 			= 1e-4;
 
 const double alpha0      	= 0.2;
 const double finc        	= 1.1;
@@ -49,11 +54,11 @@ const double fdec        	= 0.5;
 const double falpha      	= 0.99;
 
 const double phiskip 		= 0.01;
-const int NSKIP 			= 1e3;
+const int NSKIP 			= 2e4;
 const int NMIN        		= 100;
 const int NNEGMAX     		= 2000;
 const int NDELAY      		= 1000;
-const int itmax       		= 1e7;  
+const int itmax       		= 1e7;
 
 
 // function prototypes
@@ -72,14 +77,14 @@ int main(int argc, char const *argv[])
 
 	// parameters to be read in 
 	int N, seed;
-	double l2, dl0, dphi, dg, del, Ftol;
+	double l2, dl0, dg, del, Ftol, cda;
 
 	// read in parameters from command line input
 	string N_str 		= argv[1];
 	string dl0_str 		= argv[2];
-	string dphi_str 	= argv[3];
-	string dg_str 		= argv[4]; 	// NOTE: in "units" of delta_phi, so will scale with dphi parameter
-	string del_str 		= argv[5];
+	string dg_str 		= argv[3]; 	// NOTE: in "units" of delta_phi, so will scale with dphi parameter
+	string del_str 		= argv[4];
+	string cda_str 		= argv[5];
 	string l2_str 		= argv[6];
 	string Ftol_str 	= argv[7];
 	string seed_str 	= argv[8];
@@ -87,18 +92,18 @@ int main(int argc, char const *argv[])
 
 	stringstream Nss(N_str);
 	stringstream dl0ss(dl0_str);
-	stringstream dphiss(dphi_str);
 	stringstream dgss(dg_str);
 	stringstream delss(del_str);
+	stringstream cdass(cda_str);
 	stringstream l2ss(l2_str);
 	stringstream Ftolss(Ftol_str);
 	stringstream seedss(seed_str);
 
 	Nss >> N;
 	dl0ss >> dl0;
-	dphiss >> dphi;
 	dgss >> dg;
 	delss >> del;
+	cdass >> cda;
 	l2ss >> l2;
 	Ftolss >> Ftol;
 	seedss >> seed;
@@ -115,9 +120,13 @@ int main(int argc, char const *argv[])
 	}
 
 
-	// check del parameter
+	// check del parameter + cda parameter
 	if (del < 0.0 || del > 1.0){
 		cout << "** ERROR: del = " << del << ", should be within 0 to 1. Ending here. " << endl;
+		return 1;
+	}
+	else if (cda < 0.0 || cda > 1.0){
+		cout << "** ERROR: cda = " << cda << ", should be within 0 to 1. Ending here. " << endl;
 		return 1;
 	}
 
@@ -128,9 +137,9 @@ int main(int argc, char const *argv[])
 	cout << "		Athermal gelation of densely-packed dimers 		" << endl;
 	cout << "		N 			= " << N << "						" << endl;
 	cout << "		dr 			= " << dr << " 						" << endl;
-	cout << "		dphi 		= " << dphi << " 					" << endl;
 	cout << "		dg 			= " << dg << "						" << endl;
 	cout << "		del 		= " << del << "						" << endl;
+	cout << "		cda 		= " << cda << " 					" << endl;
 	cout << "		l2 			= " << l2 << " 						" << endl;
 	cout << "		Ftol 		= " << Ftol << " 					" << endl;
 	cout << "		seed 		= " << seed << "					" << endl;
@@ -720,7 +729,7 @@ int main(int argc, char const *argv[])
 	double rscale;
 
 	// attraction parameters
-	double p1, u1, u2, h, lij, fdirtmp;
+	double p1, u1, u2, h, lij, zij, fdirtmp;
 
 	// strain parameters
 	double dgx, dgy, dgz;
@@ -972,8 +981,8 @@ int main(int argc, char const *argv[])
 		                    h = rij/sij;
 		                    
 		                    // lij: effective adhesion strength based on contacts
-		                    // lij = 0.25*l2*((1/z[i]) + (1/z[j]));
-		                    lij = 0.75*l2;
+		                    zij = 0.5*(z[i] + z[j])*cda + 1.0;
+	                    	lij = 0.9*(l2/zij);
 		                    p1 = 1.0 + lij;
 		                    u1 = lij/(l2 - lij);
 		                    u2 = l2*lij;
@@ -1060,8 +1069,8 @@ int main(int argc, char const *argv[])
 			                    h = rij/sij;
 			                    
 			                    // lij: effective adhesion strength based on contacts
-			                    // lij = 0.25*l2*((1/z[i]) + (1/z[j]));
-			                    lij = 0.75*l2;
+			                    zij = 0.5*(z[i] + z[j])*cda + 1.0;
+		                    	lij = 0.9*(l2/zij);
 			                    p1 = 1.0 + lij;
 			                    u1 = lij/(l2 - lij);
 			                    u2 = l2*lij;
