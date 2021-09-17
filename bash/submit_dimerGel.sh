@@ -143,9 +143,9 @@ sbatch -t $time $slurmf
 #       INPUTS
 # ====================
 # 1. N
-# 2. dl0
 # 3. dg
-# 4. del
+# 3. del
+# 4. cda
 # 5. l2
 # 6. partition
 # 7. time
