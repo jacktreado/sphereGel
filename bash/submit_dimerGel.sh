@@ -90,10 +90,9 @@ for seed in `seq $startSeed $numSeedsPerRun $endSeed`; do
 
         # create output files
         xyzf=$simdatadir/$filestr.xyz
-        cmf=$simdatadir/$filestr.cm
 
         # append to runString
-        runString="$runString ; ./$binf $N $dl0 $dphi $dg $del $l2 $Ftol $runseed $xyzf $cmf"
+        runString="$runString ; ./$binf $N $dl0 $dg $del $cda $l2 $Ftol $runseed $xyzf"
     done
 
     # finish off run string
