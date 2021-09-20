@@ -137,8 +137,13 @@ end
 
 %% Function to compute wavevector arrays given a certain number of grid points
 function k = karray(L)
+if mod(L,2) == 0
+    H = L/2;
+else
+    H = ceil(L/2);
+end
 k = zeros(1,L);
 Fs = 2.0*pi/L;
-k(1:(L/2)) = Fs*(0:(L/2-1));
-k((L/2)+1:end) = Fs*((L/2:(L-1))-L);
+k(1:H) = Fs*(0:(H-1));
+k(H+1:end) = Fs*((H:(L-1))-L);
 end
