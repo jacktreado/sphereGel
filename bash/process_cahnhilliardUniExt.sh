@@ -3,8 +3,8 @@
 # directory for all output for cell simulations
 outputdir=/gpfs/loomis/project/fas/ohern/jdt45/flowers
 
-# directory for simulations specific to sphereGel
-simtypedir=$outputdir/dimerGel
+# directory for simulations specific to cahnHilliardUniExt
+simtypedir=$outputdir/chUniExt
 
 # directory to save matfiles
 savedir=$simtypedir/matfiles
@@ -19,17 +19,22 @@ mkdir -p slurm
 mkdir -p out
 
 # inputs
-N=$1
-dg=$2
-del=$3
-cda=$4
-l2=$5
-partition=$6
-time=$7
+NT=$1
+NPRINT=$2
+NSKIPSTRAIN=$3
+Lx=$4
+Ly=$5
+Lz0=$6
+phi0=$7
+startSeed=$8
+numSeeds=$9
+partition="${10}"
+time="${11}"
 
-# name strings
-basestr=dgel_N"$N"_dg"$dg"_del"$del"_cda"$cda"_l2"$l2"
-runstr="$basestr"_PRT_PROCESS
+let endSeed=$startSeed+$numSeeds-1
+
+basestr=chUniExt_NT"$NT"_NSS"$NSKIPSTRAIN"_Lx"$Lx"_Ly"$Ly"_Lz0"$Lz0"_phi0"$phi0"
+runstr="$basestr"_PROCESS
 searchstr="$basestr"_seed
 
 # access directory specific for this simulation
@@ -41,10 +46,11 @@ then
 fi
 
 # get mafile string to save data
-savestr="$savedir"/partial_"$basestr".mat
+savestr="$savedir"/"$basestr".mat
+mvstr="$savedir"/"$basestr".mp4
 
 # create matlab command
-MCODE="addpath ~/sphereGel/viz/; partialProcessDimerGel('$simdatadir','$searchstr','$savestr'); quit"
+MCODE="addpath ~/sphereGel/viz/; processCahnHilliardUniExt('$simdatadir','$searchstr','$savestr','$mvstr'); quit"
 
 # setup slurm files
 slurmf=slurm/"$runstr".slurm
@@ -75,14 +81,14 @@ sbatch -t $time $slurmf
 # ====================
 #       INPUTS
 # ====================
-# 1. N
-# 2. dg
-# 3. del
-# 4. cda
-# 5. l2
-# 6. partition
-# 7. time
-
-
-
-
+# 1. NT
+# 2. NPRINT
+# 3. NSKIPSTRAIN
+# 4. Lx
+# 5. Ly
+# 6. Lz
+# 7. phi0
+# 8. start seed (startSeed)
+# 9. # of seeds (numSeeds)
+# 10. partition
+# 11. time
