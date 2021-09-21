@@ -45,7 +45,7 @@ fi
 
 # get mafile string to save data
 savestr="$savedir"/"$searchstr".mat
-mvstr="$savedir"/"$searchstr".mp4
+mvstr="$savedir"/"$searchstr".gif
 
 # create matlab command
 MCODE="addpath ~/sphereGel/viz/; processCahnHilliardUniExt('$simdatadir','$searchstr','$savestr','$mvstr'); quit"
