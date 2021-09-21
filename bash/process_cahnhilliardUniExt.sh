@@ -31,9 +31,9 @@ time=$9
 
 let endSeed=$startSeed+$numSeeds-1
 
-basestr=chUniExt_NT"$NT"_NSS"$NSKIPSTRAIN"_Lx"$Lx"_Ly"$Ly"_Lz0"$Lz0"_phi0"$phi0"_seed"$seed"
+basestr=chUniExt_NT"$NT"_NSS"$NSKIPSTRAIN"_Lx"$Lx"_Ly"$Ly"_Lz0"$Lz0"_phi0"$phi0"
 runstr="$basestr"_PROCESS
-searchstr="$basestr"
+searchstr="$basestr"_seed"$seed"
 
 # access directory specific for this simulation
 simdatadir=$simtypedir/$basestr
@@ -44,8 +44,8 @@ then
 fi
 
 # get mafile string to save data
-savestr="$savedir"/"$basestr".mat
-mvstr="$savedir"/"$basestr".mp4
+savestr="$savedir"/"$searchstr".mat
+mvstr="$savedir"/"$searchstr".mp4
 
 # create matlab command
 MCODE="addpath ~/sphereGel/viz/; processCahnHilliardUniExt('$simdatadir','$searchstr','$savestr','$mvstr'); quit"
@@ -85,10 +85,9 @@ sbatch -t $time $slurmf
 # 4. Ly
 # 5. Lz
 # 6. phi0
-# 7. start seed (startSeed)
-# 8. # of seeds (numSeeds)
-# 9. partition
-# 10. time
+# 7. seed
+# 8. partition
+# 9. time
 
 
 
