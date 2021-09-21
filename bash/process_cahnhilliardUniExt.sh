@@ -25,16 +25,15 @@ Lx=$3
 Ly=$4
 Lz0=$5
 phi0=$6
-startSeed=$7
-numSeeds=$8
-partition=$9
-time="${10}"
+seed=$7
+partition=$8
+time=$9
 
 let endSeed=$startSeed+$numSeeds-1
 
-basestr=chUniExt_NT"$NT"_NSS"$NSKIPSTRAIN"_Lx"$Lx"_Ly"$Ly"_Lz0"$Lz0"_phi0"$phi0"
+basestr=chUniExt_NT"$NT"_NSS"$NSKIPSTRAIN"_Lx"$Lx"_Ly"$Ly"_Lz0"$Lz0"_phi0"$phi0"_seed"$seed"
 runstr="$basestr"_PROCESS
-searchstr="$basestr"_seed
+searchstr="$basestr"
 
 # access directory specific for this simulation
 simdatadir=$simtypedir/$basestr
@@ -81,15 +80,15 @@ sbatch -t $time $slurmf
 #       INPUTS
 # ====================
 # 1. NT
-# 3. NSKIPSTRAIN
-# 4. Lx
-# 5. Ly
-# 6. Lz
-# 7. phi0
-# 8. start seed (startSeed)
-# 9. # of seeds (numSeeds)
-# 10. partition
-# 11. time
+# 2. NSKIPSTRAIN
+# 3. Lx
+# 4. Ly
+# 5. Lz
+# 6. phi0
+# 7. start seed (startSeed)
+# 8. # of seeds (numSeeds)
+# 9. partition
+# 10. time
 
 
 
