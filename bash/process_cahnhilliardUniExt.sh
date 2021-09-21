@@ -36,7 +36,7 @@ runstr="$basestr"_PROCESS
 searchstr="$basestr"_seed"$seed"
 
 # access directory specific for this simulation
-simdatadir=$simtypedir/$basestr
+simdatadir=$simtypedir/$basestr/$searchstr
 if [[ ! -d $simdatadir ]]
 then
     echo -- sim directory "$simdatadir" does not exist, ending.
