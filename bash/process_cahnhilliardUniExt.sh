@@ -20,16 +20,15 @@ mkdir -p out
 
 # inputs
 NT=$1
-NPRINT=$2
-NSKIPSTRAIN=$3
-Lx=$4
-Ly=$5
-Lz0=$6
-phi0=$7
-startSeed=$8
-numSeeds=$9
-partition="${10}"
-time="${11}"
+NSKIPSTRAIN=$2
+Lx=$3
+Ly=$4
+Lz0=$5
+phi0=$6
+startSeed=$7
+numSeeds=$8
+partition=$9
+time="${10}"
 
 let endSeed=$startSeed+$numSeeds-1
 
@@ -82,7 +81,6 @@ sbatch -t $time $slurmf
 #       INPUTS
 # ====================
 # 1. NT
-# 2. NPRINT
 # 3. NSKIPSTRAIN
 # 4. Lx
 # 5. Ly
@@ -92,3 +90,17 @@ sbatch -t $time $slurmf
 # 9. # of seeds (numSeeds)
 # 10. partition
 # 11. time
+
+
+
+
+
+
+
+
+
+
+
+
+
+
