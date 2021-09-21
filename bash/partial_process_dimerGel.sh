@@ -23,15 +23,15 @@ mkdir -p out
 
 # inputs
 N=$1
-dl0=$2
-dg=$3
-del=$4
+dg=$2
+del=$3
+cda=$4
 l2=$5
 partition=$6
 time=$7
 
 # name strings
-basestr=dgel_N"$N"_dl0"$dl0"_dg"$dg"_del"$del"_l2"$l2"
+basestr=dgel_N"$N"_dg"$dg"_del"$del"_cda"$cda"_l2"$l2"
 runstr="$basestr"_PRT_PROCESS
 searchstr="$basestr"_seed
 
@@ -79,9 +79,9 @@ sbatch -t $time $slurmf
 #       INPUTS
 # ====================
 # 1. N
-# 2. dl0
-# 3. dg
-# 4. del
+# 2. dg
+# 3. del
+# 4. cda
 # 5. l2
 # 6. partition
 # 7. time
