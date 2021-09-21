@@ -52,10 +52,6 @@ kvarList = zeros(NSIMS,1);
 KgList = zeros(NSIMS,1);
 k2List = zeros(NSIMS,1);
 
-% open video information 
-vobj = VideoWriter(mvstr,'MPEG-4');
-open(vobj);
-
 % loop over frames
 for ss = 1:NSIMS
     % file info
@@ -112,11 +108,14 @@ for ss = 1:NSIMS
     camlight; lighting phong
 
     % write to video
-    imgstr = 'movieframe.png';
-    saveas(f,imgstr);
-    img = imread(imgstr);
-    writeVideo(vobj,img);
-    delete(imgstr);
+    frame = getframe(f);
+    img = frame2im(frame);
+    [imind,cm] = rgb2ind(img,256);
+    if ss == 1
+        imwrite(imind,cm,mvstr,'gif','Loopcount',inf); 
+    else
+        imwrite(imind,cm,mvstr,'gif','WriteMode','append'); 
+    end
     
     % get structural information
     microCT = psi > 0;
@@ -251,10 +250,6 @@ for ss = 1:NSIMS
     k2List(ss) = ((btmp^2) + 0.75*(ctmp^2))/Kgtmp^4;
     KgList(ss) = Kgtmp;
 end
-
-% close video object
-close(vobj);
-
 
 %% Save in matfile
 
