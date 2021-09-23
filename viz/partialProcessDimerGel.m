@@ -26,7 +26,6 @@ fskip = false(NS,1);
 
 % data to save
 fnameList = cell(NS,1);
-paramList = zeros(NS,4);   % dg, del, l2, seed
 N_LIST = zeros(NS,1);
 
 % save things only at each snapshot
@@ -109,19 +108,6 @@ for ss = 1:NS
         % box info
         LList{ss,pp} = L(snapids(pp),:);
     end
-    
-    % extract parameters from file name
-    paramidx    = strfind(fname,'_dg');
-    paramstr    = fname(paramidx:end);
-    params      = sscanf(paramstr,'_dg%f_del%f_l2%f_seed%f.xyz');
-    dg          = params(1);
-    del         = params(2);
-    l2          = params(3);
-    seed        = params(4);
-    
-    % save
-    paramList(ss,:) = [dg, del, l2, seed];
-    
     
     % -- Construct sphere image, get structural features
 
@@ -213,7 +199,6 @@ for ss = 1:NS
     
     % save matfile as you go
     saveStruct.fnameList = fnameList(~fskip(1:ss));
-    saveStruct.paramList = paramList(~fskip(1:ss),:);
     saveStruct.N_LIST = N_LIST(~fskip(1:ss));
     saveStruct.SNAP_LIST = SNAP_LIST(~fskip(1:ss),:);
     saveStruct.phiImgList = phiImgList(~fskip(1:ss),:);
