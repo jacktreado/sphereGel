@@ -2,7 +2,7 @@
 
 # output directories
 outputdir=/gpfs/loomis/project/fas/ohern/jdt45/flowers
-simtypedir=$outputdir/chUniExt
+simtypedir=$outputdir/chUniExtQD
 
 # make directories, unless they already exist
 mkdir -p $outputdir
