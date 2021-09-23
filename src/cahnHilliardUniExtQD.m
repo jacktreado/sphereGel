@@ -1,12 +1,9 @@
-function cahnHilliardUniExt(NT, NPRINT, NSKIPSTRAIN, Lx, Ly, Lz0, phi0, seed, ftype)
-%% FUNCTION TO SIMULATION CAHN-HILLIARD EQUATION 
+function cahnHilliardUniExtQD(NT, NPRINT, NSKIPSTRAIN, A, Lx, Ly, Lz0, phi0, seed, ftype)
+%% FUNCTION to model phase separation with quenched disorder (with strength A)
 % in 3D with variable seeds, parameters and initial conditions
 
 % set random seed
 rng(seed);
-
-% system boundary info
-NDIM    = 3;
 
 % simulation duration info
 dt      = 0.01;
@@ -18,11 +15,15 @@ Lzmax = 2*Lz0;
 Lz = Lz0;
 rz = 1:Lz;
 
+% initialize quenched-disorder
+Du = A*rand(Ly,Lx,Lzmax);
+Dr = A*rand(Ly,Lx,Lzmax);
+
 % concentration field (pad to max)
 phi             = zeros(Ly,Lx,Lzmax);
 phi0mat         = repmat(phi0,Ly,Lx,Lzmax);
 phi(:,:,rz)     = phi0mat(:,:,rz) + 0.1*randn(Ly,Lx,Lz);
-psi             = phi.^3 - phi;
+psi             = (1 + Du).*phi.^3 - (1 + Dr).*phi;
 
 % FFT phi ONCE (is updated in Euler, so no need to constantly FFT back and
 % forth)
@@ -60,8 +61,16 @@ for tt = 1:NT
         bwd = reshape(bwd,1,1,Lz-1);
         for xx = 1:Lx
             for yy = 1:Ly
+                % extend phi
                 phi(yy,xx,Lz+1) = phi(yy,xx,Lz);
                 phi(yy,xx,fwd) = sc.*(phi(yy,xx,fwd) - phi(yy,xx,bwd)) + phi(yy,xx,bwd);
+                
+                % also extend quenched disorder
+                Du(yy,xx,Lz+1) = Du(yy,xx,Lz);
+                Du(yy,xx,fwd) = sc.*(Du(yy,xx,fwd) - Du(yy,xx,bwd)) + Du(yy,xx,bwd);
+                
+                Dr(yy,xx,Lz+1) = Dr(yy,xx,Lz);
+                Dr(yy,xx,fwd) = sc.*(Dr(yy,xx,fwd) - Dr(yy,xx,bwd)) + Dr(yy,xx,bwd);
             end
         end
         Lz = Lz + 1;
@@ -83,7 +92,7 @@ for tt = 1:NT
     % Print to console and figure
     if mod(tt,NPRINT) == 0
         % print to console
-        fprintf('   ** t = %d: Simulating CH eq in d = %d, with Lx=%d, Ly=%d, Lz=%d, phi0=%0.5g\n',tt,NDIM,Lx,Ly,Lz,phi0);
+        fprintf('   ** t = %d: Simulating CH eq with Lz=%d, phi(1,1,Lz)=%0.5g, Dr(1,1,Lz)=%0.5g\n',tt,Lz,phi(1,1,Lz),Dr(1,1,Lz));
         
         % print configuration
         fstr = [ftype '_' num2str(frame) '.pos'];
@@ -99,7 +108,7 @@ for tt = 1:NT
     
     % IFFT back to update psi
     phi(:,:,rz) = ifftn(fphi);
-    psi(:,:,rz) = phi(:,:,rz).^3 - phi(:,:,rz);
+    psi(:,:,rz) = (1 + Du(:,:,rz)).*phi(:,:,rz).^3 - (1 + Dr(:,:,rz)).*phi(:,:,rz);
     
     % update time
     t = t + dt;

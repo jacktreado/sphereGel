@@ -221,7 +221,6 @@ end
 
 % remove extra files
 fnameList(fskip)    = [];
-paramList(fskip,:)  = [];
 N_LIST(fskip)       = [];
 SNAP_LIST(fskip,:)  = [];
 phiImgList(fskip,:) = [];
