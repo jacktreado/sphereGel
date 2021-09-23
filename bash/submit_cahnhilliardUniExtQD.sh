@@ -22,7 +22,7 @@ Ly=$6
 Lz0=$7
 phi0=$8
 startSeed=$9
-numSeeds=$10
+numSeeds="${10}"
 partition="${11}"
 time="${12}"
 
