@@ -73,6 +73,7 @@ for ss = 1:NS
     posdata     = readDGelXYZ([ffldr '/' fname]);
     N           = posdata.N;
     L           = posdata.L;
+    NFRAMES     = posdata.NFRAMES;
     
     % save positions & radii
     xpos            = posdata.xpos;
@@ -89,29 +90,12 @@ for ss = 1:NS
     SnormList{ss} = Snorm;
     SshearList{ss} = Sshear;
     zList{ss} = z;
-
-    % save last index before loosing rigidity (add 1, missing frame in cm
-    % list)
-    if min(z) > 6
-        lastRigidZInd = posdata.NFRAMES;
-        NRIGID = lastRigidZInd;
-    else
-        lastRigidZInd = find(z(1:end-1) > 6 & z(2:end) < 6);
-        if isempty(lastRigidZInd)
-            fprintf('Could not find lastRigidZInd, skipping.\n');
-            fskip(ss) = true;
-            continue;
-        else
-            NRIGID = lastRigidZInd(1);
-            fprintf('Found %s rigid frames (including start), processing...\n',NRIGID);
-        end
-    end
     
     % save number of particles and frames
     N_LIST(ss) = N;
     
     % get frame ids of snapshots
-    snapids = round(linspace(1,NRIGID,NSNAPS));
+    snapids = round(linspace(1,NFRAMES,NSNAPS));
     SNAP_LIST(ss,:) = snapids';
     
     % save into cells
