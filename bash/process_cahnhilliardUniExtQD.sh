@@ -46,10 +46,9 @@ fi
 
 # get mafile string to save data
 savestr="$savedir"/"$searchstr".mat
-mvstr="$savedir"/"$searchstr".gif
 
 # create matlab command
-MCODE="addpath ~/sphereGel/viz/; processCahnHilliardUniExt('$simdatadir','$searchstr','$savestr','$mvstr'); quit"
+MCODE="addpath ~/sphereGel/viz/; processCahnHilliardUniExt('$simdatadir','$searchstr','$savestr'); quit"
 
 # setup slurm files
 slurmf=slurm/"$runstr".slurm

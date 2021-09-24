@@ -1,4 +1,4 @@
-function processCahnHilliardUniExt(simloc,simfrmt,savestr,mvstr)
+function processCahnHilliardUniExt(simloc,simfrmt,savestr)
 %% FUNCTION to analyze structural features of cahn hilliard sims, make movies
 
 % check that directory exists
@@ -38,7 +38,7 @@ end
 [frameID,srtidx] = sort(frameID);
 simlist = simlist(srtidx);
 LList = LList(srtidx,:);
-Lplot = LList(end,:);
+% Lplot = LList(end,:);
 
 %% Loop over files, make movie, save structural features
 
@@ -79,46 +79,46 @@ for ss = 1:NSIMS
     end
     tList(ss) = t;
         
-    % get grid points
-    [PX, PY, PZ] = meshgrid(1:Lx,1:Ly,1:Lz);
-
-    % isovalue
-    iv = 0;
-
-    fprintf('** Generating isosurface in frame %d, t = %0.4g...\n',frameID(ss),t);
-    fv = isosurface(PX,PY,PZ,psi,iv);
-    vpos = fv.vertices;
-    finfo = fv.faces;
-
-    % plot isosurface
-    fprintf('** Plotting isosurface....not showing figure, but writing to %s...\n',mvstr);
-    f = figure('visible','off');
-    clf, hold on, box on;
-    f.Color = [1 1 1];
-    patch('Faces',finfo,'Vertices',vpos,'FaceColor','b','EdgeColor','none');
-    patch(isocaps(PX, PY, PZ, psi, iv), 'FaceColor', 'interp', 'EdgeColor', 'none');
-    view(3);
-    axis vis3d equal;
-    colormap('jet');
-    ax = gca;
-    ax.Clipping = 'off';
-    ax.XLim = [1 Lplot(1)];
-    ax.YLim = [1 Lplot(2)];
-    ax.ZLim = [1 Lplot(3)];
-    camlight; lighting phong
-
-    % write to video
-    frame = getframe(f);
-    img = frame2im(frame);
-    [imind,cm] = rgb2ind(img,256);
-    if ss == 1
-        imwrite(imind,cm,mvstr,'gif','Loopcount',inf); 
-    else
-        imwrite(imind,cm,mvstr,'gif','WriteMode','append'); 
-    end
+%     % get grid points
+%     [PX, PY, PZ] = meshgrid(1:Lx,1:Ly,1:Lz);
+% 
+%     % isovalue
+%     iv = 0;
+% 
+%     fprintf('** Generating isosurface in frame %d, t = %0.4g...\n',frameID(ss),t);
+%     fv = isosurface(PX,PY,PZ,psi,iv);
+%     vpos = fv.vertices;
+%     finfo = fv.faces;
+% 
+%     % plot isosurface
+%     fprintf('** Plotting isosurface....not showing figure, but writing to %s...\n',mvstr);
+%     f = figure('visible','off');
+%     clf, hold on, box on;
+%     f.Color = [1 1 1];
+%     patch('Faces',finfo,'Vertices',vpos,'FaceColor','b','EdgeColor','none');
+%     patch(isocaps(PX, PY, PZ, psi, iv), 'FaceColor', 'interp', 'EdgeColor', 'none');
+%     view(3);
+%     axis vis3d equal;
+%     colormap('jet');
+%     ax = gca;
+%     ax.Clipping = 'off';
+%     ax.XLim = [1 Lplot(1)];
+%     ax.YLim = [1 Lplot(2)];
+%     ax.ZLim = [1 Lplot(3)];
+%     camlight; lighting phong
+% 
+%     % write to video
+%     frame = getframe(f);
+%     img = frame2im(frame);
+%     [imind,cm] = rgb2ind(img,256);
+%     if ss == 1
+%         imwrite(imind,cm,mvstr,'gif','Loopcount',inf); 
+%     else
+%         imwrite(imind,cm,mvstr,'gif','WriteMode','append'); 
+%     end
     
     % get structural information
-    microCT = psi > 0;
+    microCT = psi > mean(psi(:));
     phiImgList(ss,1) = mean(microCT,'all');
     
     fprintf('** ff = %d, frameID = %d: Getting correlations, computing FFTs...\n',ss,frameID(ss));
