@@ -4,7 +4,7 @@
 outputdir=/gpfs/loomis/project/fas/ohern/jdt45/flowers
 
 # directory for simulations specific to cahnHilliardUniExt
-simtypedir=$outputdir/chUniExt
+simtypedir=$outputdir/chUniExtQD
 
 # directory to save matfiles
 savedir=$simtypedir/matfiles
